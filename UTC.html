@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Regional UTC | Gestión Fútbol Sala</title>
+
+  <link rel="stylesheet" href="UTC.css" />
+</head>
+
+<body>
+  <!-- =====================================================
+       LOGIN Y REGISTRO
+       ===================================================== -->
+  <main id="login-section" class="auth-page">
+    <section class="auth-card">
+      <p class="eyebrow">Regional UTC</p>
+      <h1>Gestión del equipo</h1>
+
+      <!-- INICIAR SESIÓN -->
+      <div id="login-view">
+        <p class="subtitle">
+          Accede con tu cuenta de entrenador o jugador.
+        </p>
+
+        <form id="login-form">
+          <label for="email">Correo electrónico</label>
+          <input
+            id="email"
+            type="email"
+            placeholder="nombre@equipo.com"
+            autocomplete="email"
+            required
+          />
+
+          <label for="password">Contraseña</label>
+          <input
+            id="password"
+            type="password"
+            placeholder="Tu contraseña"
+            autocomplete="current-password"
+            required
+          />
+
+          <button type="submit" class="btn btn-primary">
+            Iniciar sesión
+          </button>
+
+          <p id="login-error" class="form-message error-message"></p>
+          <p class="auth-switch">
+          ¿Has olvidado tu contraseña?
+          <button
+            id="show-reset-password-btn"
+            type="button"
+            class="link-btn"
+          >
+            Restablecer contraseña
+          </button>
+        </p>
+        </form>
+        
+
+        <p class="auth-switch">
+          ¿No tienes cuenta?
+
+          <button
+            id="show-register-btn"
+            type="button"
+            class="link-btn"
+          >
+            Regístrate
+          </button>
+        </p>
+      </div>
+
+      <!-- REGISTRO -->
+      <div id="register-view" class="hidden">
+        <p class="subtitle">
+          Regístrate para acceder a la aplicación del equipo.
+        </p>
+
+        <form id="register-form">
+          <label for="register-name">Nombre completo</label>
+          <input
+            id="register-name"
+            type="text"
+            placeholder="Escribe tu nombre completo"
+            autocomplete="name"
+            required
+          />
+
+          <label for="register-email">Correo electrónico</label>
+          <input
+            id="register-email"
+            type="email"
+            placeholder="nombre@equipo.com"
+            autocomplete="email"
+            required
+          />
+
+          <label for="register-password">Contraseña</label>
+          <input
+            id="register-password"
+            type="password"
+            placeholder="Mínimo 6 caracteres"
+            autocomplete="new-password"
+            minlength="6"
+            required
+          />
+
+          <label for="register-password-confirm">
+            Repite la contraseña
+          </label>
+          <input
+            id="register-password-confirm"
+            type="password"
+            placeholder="Repite tu contraseña"
+            autocomplete="new-password"
+            minlength="6"
+            required
+          />
+
+          <button type="submit" class="btn btn-primary">
+            Crear cuenta
+          </button>
+
+          <p id="register-error" class="form-message error-message"></p>
+        </form>
+
+        <p class="auth-switch">
+          ¿Ya tienes cuenta?
+
+          <button
+            id="show-login-btn"
+            type="button"
+            class="link-btn"
+          >
+            Inicia sesión
+          </button>
+        </p>
+      </div>
+
+            <!-- RESTABLECER CONTRASEÑA -->
+      <div id="reset-password-view" class="hidden">
+        <p class="subtitle">
+          Escribe el correo con el que te registraste. Te enviaremos
+          un enlace para crear una contraseña nueva.
+        </p>
+
+        <form id="reset-password-form">
+          <label for="reset-email">Correo electrónico</label>
+
+          <input
+            id="reset-email"
+            type="email"
+            placeholder="nombre@equipo.com"
+            autocomplete="email"
+            required
+          />
+
+          <button type="submit" class="btn btn-primary">
+            Enviar enlace de recuperación
+          </button>
+
+          <p id="reset-password-message" class="form-message"></p>
+        </form>
+
+        <p class="auth-switch">
+          ¿Recuerdas tu contraseña?
+
+          <button
+            id="back-to-login-btn"
+            type="button"
+            class="link-btn"
+          >
+            Volver a iniciar sesión
+          </button>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- =====================================================
+       APLICACIÓN PRINCIPAL
+       ===================================================== -->
+  <div id="app-section" class="app hidden">
+
+    <!-- CABECERA -->
+    <header class="topbar">
+      <div class="brand">
+        <p class="eyebrow">Regional UTC</p>
+        <h1>Gestión fútbol sala</h1>
+      </div>
+
+      <div class="user-area">
+        <span id="user-info"></span>
+
+        <button id="logout-btn" class="btn btn-outline" type="button">
+          Cerrar sesión
+        </button>
+      </div>
+    </header>
+
+    <!-- MENÚ -->
+    <nav class="main-nav" aria-label="Menú principal">
+      <button
+        class="nav-btn active"
+        type="button"
+        data-section="inicio"
+      >
+        Inicio
+      </button>
+
+      <button
+        class="nav-btn"
+        type="button"
+        data-section="plantilla"
+      >
+        Plantilla completa
+      </button>
+
+      <button
+        class="nav-btn"
+        type="button"
+        data-section="multas"
+      >
+        Multas
+      </button>
+
+      <button
+        class="nav-btn"
+        type="button"
+        data-section="convocatoria"
+      >
+        Convocatoria
+      </button>
+
+      <button
+        class="nav-btn"
+        type="button"
+        data-section="estadisticas"
+      >
+        Estadísticas
+      </button>
+
+      <button
+        class="nav-btn"
+        type="button"
+        data-section="asistencia"
+      >
+        Asistencia a entrenamientos
+      </button>
+    </nav>
+
+    <!-- CONTENIDO -->
+    <main class="content">
+
+<!-- =================================================
+      INICIO
+==================================================== -->
+      <section id="inicio" class="section-panel">
+        <div class="home-hero">
+          <div>
+            <p class="eyebrow">Regional UTC</p>
+            <h2>Bienvenido al Unión Tres Cantos Regional</h2>
+
+            <p class="home-description">
+              Desde esta aplicación puedes consultar la plantilla, las multas,
+              las convocatorias, las estadísticas y la asistencia.
+            </p>
+
+            <p id="home-welcome" class="home-welcome"></p>
+          </div>
+
+          <div class="home-shield">
+            <img
+              src="logo.jpeg"
+              alt="Escudo del Unión Tres Cantos Regional"
+              class="club-logo"
+            />
+          </div>
+        </div>
+
+        <div class="home-grid">
+          <button
+            class="home-card"
+            type="button"
+            data-go-to="plantilla"
+          >
+            <span class="home-icon">👥</span>
+
+            <span class="home-card-content">
+              <strong>Plantilla completa</strong>
+              <small>Consulta jugadores, dorsales y posiciones.</small>
+            </span>
+          </button>
+
+          <button
+            class="home-card"
+            type="button"
+            data-go-to="multas"
+          >
+            <span class="home-icon">💶</span>
+
+            <span class="home-card-content">
+              <strong>Multas</strong>
+              <small>Revisa las sanciones económicas del equipo.</small>
+            </span>
+          </button>
+
+          <button
+            class="home-card"
+            type="button"
+            data-go-to="convocatoria"
+          >
+            <span class="home-icon">📋</span>
+
+            <span class="home-card-content">
+              <strong>Convocatoria</strong>
+              <small>Consulta el próximo partido y los convocados.</small>
+            </span>
+          </button>
+
+          <button
+            class="home-card"
+            type="button"
+            data-go-to="estadisticas"
+          >
+            <span class="home-icon">📊</span>
+
+            <span class="home-card-content">
+              <strong>Estadísticas</strong>
+              <small>Consulta goles, asistencias, tarjetas y penaltis.</small>
+            </span>
+          </button>
+
+          <button
+            class="home-card"
+            type="button"
+            data-go-to="asistencia"
+          >
+            <span class="home-icon">📅</span>
+
+            <span class="home-card-content">
+              <strong>Asistencia</strong>
+              <small>Consulta los entrenamientos y la asistencia.</small>
+            </span>
+          </button>
+        </div>
+
+        <div class="home-role-box">
+          <h3 id="home-role-title"></h3>
+          <p id="home-role-text"></p>
+        </div>
+      </section>
+
+      <!-- =================================================
+           PLANTILLA
+           ================================================= -->
+      <section id="plantilla" class="section-panel hidden">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Equipo</p>
+            <h2>Plantilla completa</h2>
+          </div>
+
+          <span id="players-count" class="badge">
+            0 jugadores
+          </span>
+        </div>
+
+        <!-- Solo entrenadores -->
+        <div id="player-form-container" class="admin-only">
+          <h3>Añadir jugador</h3>
+
+          <form id="add-player-form" class="grid-form">
+            <div>
+              <label for="player-name">Nombre completo</label>
+              <input id="player-name" type="text" required />
+            </div>
+
+            <div>
+              <label for="player-position">Posición</label>
+              <select id="player-position" required>
+                <option value="Portero">Portero</option>
+                <option value="Cierre">Cierre</option>
+                <option value="Ala">Ala</option>
+                <option value="Pívot">Pívot</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="player-number">Dorsal</label>
+              <input
+                id="player-number"
+                type="number"
+                min="0"
+                max="99"
+                required
+              />
+            </div>
+
+            <div>
+              <label for="player-leg">Pierna dominante</label>
+              <select id="player-leg" required>
+                <option value="Derecha">Derecha</option>
+                <option value="Izquierda">Izquierda</option>
+                <option value="Ambas">Ambas</option>
+              </select>
+            </div>
+
+            <div class="form-action">
+              <button class="btn btn-primary" type="submit">
+                Añadir jugador
+              </button>
+            </div>
+          </form>
+
+          <p id="player-message" class="form-message"></p>
+        </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Posición</th>
+                <th>Dorsal</th>
+                <th>Pierna dominante</th>
+                <th class="admin-column">Acciones</th>
+              </tr>
+            </thead>
+
+            <tbody id="players-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- =================================================
+           MULTAS
+           ================================================= -->
+      <section id="multas" class="section-panel hidden">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Disciplina</p>
+            <h2>Multas</h2>
+          </div>
+
+          <span id="fines-total" class="badge">
+            Total general: 0,00 €
+          </span>
+        </div>
+
+        <details class="fine-catalog">
+          <summary>
+            <span>Ver tipos de multa y códigos</span>
+            <span class="catalog-arrow">⌄</span>
+          </summary>
+
+          <p class="fine-catalog-description">
+            Consulta el código, la descripción y el importe de cada multa.
+          </p>
+
+          <div class="table-wrapper">
+            <table class="fine-catalog-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Multa</th>
+                  <th>Importe</th>
+                </tr>
+              </thead>
+
+              <tbody id="fine-catalog-body"></tbody>
+            </table>
+          </div>
+        </details>
+
+        <!-- MIS MULTAS -->
+        <section class="personal-fines">
+          <div class="personal-fines-header">
+            <div>
+              <p class="eyebrow">Mi situación</p>
+              <h3>Mis multas</h3>
+            </div>
+
+            <span id="my-fines-total" class="personal-total">
+              Debes: 0,00 €
+            </span>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Código</th>
+                  <th>Motivo</th>
+                  <th>Importe</th>
+                </tr>
+              </thead>
+
+              <tbody id="my-fines-table-body">
+                <tr>
+                  <td colspan="4" class="empty-state">
+                    No tienes multas registradas.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- AÑADIR MULTA: SOLO ENTRENADORES -->
+        <div id="fine-form-container" class="admin-only">
+          <h3>Añadir multa</h3>
+
+          <form id="add-fine-form" class="grid-form fines-form">
+            <div>
+              <label for="fine-player">Jugador o entrenador</label>
+              <select id="fine-player" required>
+                <option value="">Selecciona una persona</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="fine-code">Código de multa</label>
+              <select id="fine-code" required>
+                <option value="">Selecciona un código</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="fine-amount">Importe (€)</label>
+              <input
+                id="fine-amount"
+                type="number"
+                min="0"
+                step="0.01"
+                readonly
+                required
+              />
+            </div>
+
+            <div>
+              <label for="fine-date">Fecha</label>
+              <input id="fine-date" type="date" required />
+            </div>
+
+            <div class="fine-description-field">
+              <label for="fine-reason">Motivo de la multa</label>
+              <input
+                id="fine-reason"
+                type="text"
+                readonly
+                placeholder="Selecciona un código de multa"
+                required
+              />
+            </div>
+
+            <div class="form-action">
+              <button class="btn btn-primary" type="submit">
+                Añadir multa
+              </button>
+            </div>
+          </form>
+
+          <p id="fine-message" class="form-message"></p>
+        </div>
+
+        <!-- TABLA GENERAL -->
+        <section class="general-fines">
+          <div class="general-fines-header">
+            <div>
+              <p class="eyebrow">Equipo</p>
+              <h3>Multas generales</h3>
+            </div>
+
+            <p class="general-fines-note">
+              Historial de multas de jugadores y entrenadores.
+            </p>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Jugador / entrenador</th>
+                  <th>Código</th>
+                  <th>Motivo</th>
+                  <th>Importe</th>
+                  <th class="admin-column">Acciones</th>
+                </tr>
+              </thead>
+
+              <tbody id="fines-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <!-- =================================================
+           CONVOCATORIA
+           Firestore guarda datos y enlaces de Google Drive
+           ================================================= -->
+      <section id="convocatoria" class="section-panel hidden">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Próximo partido</p>
+            <h2>Convocatoria</h2>
+          </div>
+
+          <span id="convocation-status" class="badge">
+            Sin convocatoria publicada
+          </span>
+        </div>
+
+        <!-- INFORMACIÓN PÚBLICA -->
+        <section class="match-info-card">
+          <div class="match-info-item">
+            <span class="match-info-label">Ubicación</span>
+            <strong id="convocation-location">
+              Pendiente de confirmar
+            </strong>
+          </div>
+
+          <div class="match-info-item">
+            <span class="match-info-label">Fecha</span>
+            <strong id="convocation-date">
+              Pendiente de confirmar
+            </strong>
+          </div>
+
+          <div class="match-info-item">
+            <span class="match-info-label">Hora</span>
+            <strong id="convocation-time">
+              Pendiente de confirmar
+            </strong>
+          </div>
+        </section>
+
+        <!-- IMAGEN DE CONVOCATORIA DESDE DRIVE -->
+        <section class="convocation-image-section">
+          <h3>Imagen de convocatoria</h3>
+
+          <div
+            id="convocation-image-container"
+            class="convocation-image-container"
+          >
+            <p class="empty-state">
+              Todavía no se ha publicado una imagen de convocatoria.
+            </p>
+          </div>
+        </section>
+
+        <!-- LISTA DE CONVOCADOS -->
+        <section class="called-players-section">
+          <div class="section-subheading">
+            <div>
+              <p class="eyebrow">Equipo</p>
+              <h3>Jugadores convocados</h3>
+            </div>
+
+            <span id="called-players-count" class="badge">
+              0 convocados
+            </span>
+          </div>
+
+          <div id="called-players-list" class="called-players-list">
+            <p class="empty-state">
+              Todavía no hay jugadores convocados.
+            </p>
+          </div>
+        </section>
+
+        <!-- FORMULARIO: SOLO ENTRENADORES -->
+        <section id="convocation-admin-container" class="admin-only">
+          <h3>Publicar convocatoria</h3>
+
+          <form id="convocation-form" class="convocation-form">
+            <div class="grid-form">
+              <div>
+                <label for="convocation-location-input">
+                  Ubicación
+                </label>
+
+                <input
+                  id="convocation-location-input"
+                  type="text"
+                  placeholder="Ej.: Polideportivo La Luz"
+                  required
+                />
+              </div>
+
+              <div>
+                <label for="convocation-date-input">
+                  Fecha del partido
+                </label>
+
+                <input
+                  id="convocation-date-input"
+                  type="date"
+                  required
+                />
+              </div>
+
+              <div>
+                <label for="convocation-time-input">Hora</label>
+
+                <input
+                  id="convocation-time-input"
+                  type="time"
+                  required
+                />
+              </div>
+
+              <div>
+                <label for="convocation-image-url-input">
+                  Enlace de imagen desde Google Drive
+                </label>
+
+                <input
+                  id="convocation-image-url-input"
+                  type="url"
+                  placeholder="https://drive.google.com/..."
+                />
+              </div>
+            </div>
+
+            <div class="called-players-selector">
+              <h4>Selecciona los jugadores convocados</h4>
+
+              <p class="help-text">
+                Marca los jugadores que estarán convocados para el partido.
+              </p>
+
+              <div
+                id="convocation-players-selector"
+                class="players-checkbox-grid"
+              >
+                <p class="empty-state">
+                  Primero añade jugadores en la sección Plantilla.
+                </p>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+              Publicar convocatoria
+            </button>
+
+            <p id="convocation-message" class="form-message"></p>
+          </form>
+        </section>
+
+        <!-- ENLACE A JUGADAS DESTACADAS -->
+        <section class="highlights-link-card">
+          <div>
+            <p class="eyebrow">Después del partido</p>
+            <h3>Jugadas destacadas</h3>
+
+            <p>
+              Consulta el vídeo del partido, la fecha, la ubicación
+              y los goleadores.
+            </p>
+          </div>
+
+          <button
+            id="go-to-highlights-btn"
+            class="btn btn-primary"
+            type="button"
+          >
+            Jugadas destacadas
+          </button>          
+        </section>
+     
+        <!-- HISTORIAL DE CONVOCATORIAS Y PARTIDOS -->
+        <section class="match-history-section">
+          <div class="section-subheading">
+            <div>
+              <p class="eyebrow">Historial</p>
+              <h3>Convocatorias y partidos pasados</h3>
+            </div>
+
+            <span id="match-history-count" class="badge">
+              0 partidos
+            </span>
+          </div>
+
+          <p class="help-text">
+            Consulta convocatorias anteriores y las jugadas destacadas
+            de cada partido.
+          </p>
+
+          <div id="match-history-list" class="match-history-list">
+            <p class="empty-state">
+              Todavía no hay convocatorias o partidos anteriores.
+            </p>
+          </div>
+        </section>
+      </section>
+
+      <!-- =================================================
+           JUGADAS DESTACADAS
+           ================================================= -->
+      <section id="jugadas-destacadas" class="section-panel hidden">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Resumen del partido</p>
+            <h2>Jugadas destacadas</h2>
+          </div>
+
+          <button
+            id="back-to-convocation-btn"
+            class="btn btn-outline-dark"
+            type="button"
+          >
+            Volver a convocatoria
+          </button>
+          <p id="selected-match-label" class="selected-match-label">
+            Partido actual
+          </p>
+        </div>
+
+        <!-- INFORMACIÓN PÚBLICA DEL PARTIDO -->
+        <section class="match-info-card">
+          <div class="match-info-item">
+            <span class="match-info-label">Fecha del partido</span>
+            <strong id="highlights-date">
+              Pendiente de confirmar
+            </strong>
+          </div>
+
+          <div class="match-info-item">
+            <span class="match-info-label">Ubicación</span>
+            <strong id="highlights-location">
+              Pendiente de confirmar
+            </strong>
+          </div>
+
+          <div class="match-info-item">
+            <span class="match-info-label">Goleadores</span>
+            <strong id="highlights-scorers">
+              Sin registrar
+            </strong>
+          </div>
+        </section>
+
+        <!-- VÍDEO DESDE GOOGLE DRIVE -->
+        <section class="highlights-video-section">
+          <h3>Vídeo de jugadas destacadas</h3>
+
+          <div
+            id="highlights-video-container"
+            class="highlights-video-container"
+          >
+            <p class="empty-state">
+              Todavía no se ha publicado un vídeo de jugadas destacadas.
+            </p>
+          </div>
+        </section>
+
+        <!-- FORMULARIO: SOLO ENTRENADORES -->
+        <section id="highlights-admin-container" class="admin-only">
+          <h3>Publicar jugadas destacadas</h3>
+
+          <form id="highlights-form" class="highlights-form">
+            <div class="grid-form">
+              <div>
+                <label for="highlights-date-input">
+                  Fecha del partido
+                </label>
+
+                <input
+                  id="highlights-date-input"
+                  type="date"
+                  required
+                />
+              </div>
+
+              <div>
+                <label for="highlights-location-input">
+                  Ubicación
+                </label>
+
+                <input
+                  id="highlights-location-input"
+                  type="text"
+                  placeholder="Ej.: Polideportivo La Luz"
+                  required
+                />
+              </div>
+
+              <div>
+                <label for="highlights-scorers-input">
+                  Goleadores
+                </label>
+
+                <input
+                  id="highlights-scorers-input"
+                  type="text"
+                  placeholder="Ej.: Bony (2), Santi (1)"
+                  required
+                />
+              </div>
+
+              <div>
+                <label for="highlights-video-url-input">
+                  Enlace de vídeo desde Google Drive
+                </label>
+
+                <input
+                  id="highlights-video-url-input"
+                  type="url"
+                  placeholder="https://drive.google.com/file/d/..."
+                />
+              </div>
+            </div>
+
+            <p class="help-text">
+              Sube primero el vídeo a Google Drive. En Compartir selecciona
+              “Cualquier persona con el enlace” y el permiso “Lector”.
+              Después pega aquí el enlace del archivo.
+            </p>
+
+            <button type="submit" class="btn btn-primary">
+              Publicar jugadas destacadas
+            </button>
+
+            <p id="highlights-message" class="form-message"></p>
+          </form>
+        </section>
+      </section>
+
+      <!-- =================================================
+           ESTADÍSTICAS
+           ================================================= -->
+      <section id="estadisticas" class="section-panel hidden">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Rendimiento</p>
+            <h2>Estadísticas de jugadores</h2>
+          </div>
+        </div>
+
+        <!-- Solo entrenadores -->
+        <div id="stats-form-container" class="admin-only">
+          <h3>Modificar estadística</h3>
+
+          <form id="update-stat-form" class="grid-form">
+            <div>
+              <label for="stat-player">Jugador</label>
+
+              <select id="stat-player" required>
+                <option value="">Selecciona un jugador</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="stat-type">Estadística</label>
+
+              <select id="stat-type" required>
+                <option value="goles">Goles</option>
+                <option value="asistencias">Asistencias</option>
+                <option value="golesSegundoPalo">Goles 2.º palo</option>
+                <option value="amarillasProtestar">
+                  Amarillas por protestar
+                </option>
+                <option value="amarillasFalta">
+                  Amarillas por falta
+                </option>
+                <option value="rojas">Tarjetas rojas</option>
+                <option value="sextasFaltas">Sexta falta</option>
+                <option value="penaltisCometidos">
+                  Penaltis cometidos
+                </option>
+                <option value="penaltisProvocados">
+                  Penaltis provocados
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label for="stat-value">
+                Cantidad a sumar o restar
+              </label>
+
+              <input
+                id="stat-value"
+                type="number"
+                value="1"
+                min="-100"
+                max="100"
+                required
+              />
+            </div>
+
+            <div class="form-action">
+              <button class="btn btn-primary" type="submit">
+                Actualizar estadística
+              </button>
+            </div>
+          </form>
+
+          <p id="stat-message" class="form-message"></p>
+        </div>
+
+        <div class="table-wrapper wide-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Jugador</th>
+                <th>Goles</th>
+                <th>Asistencias</th>
+                <th>Goles 2.º palo</th>
+                <th>Amarillas protestar</th>
+                <th>Amarillas falta</th>
+                <th>Rojas</th>
+                <th>Sextas faltas</th>
+                <th>Penaltis cometidos</th>
+                <th>Penaltis provocados</th>
+              </tr>
+            </thead>
+
+            <tbody id="stats-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- =================================================
+           ASISTENCIA
+           ================================================= -->
+      <section id="asistencia" class="section-panel hidden">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Entrenamientos</p>
+            <h2>Asistencia a entrenamientos</h2>
+          </div>
+        </div>
+
+        <!-- Solo entrenadores -->
+        <div id="training-form-container" class="admin-only">
+          <h3>Crear entrenamiento</h3>
+
+          <form id="add-training-form" class="inline-form">
+            <div>
+              <label for="training-date">
+                Fecha del entrenamiento
+              </label>
+
+              <input id="training-date" type="date" required />
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+              Añadir entrenamiento
+            </button>
+          </form>
+
+          <p class="help-text">
+            Puedes crear entrenamientos hasta junio. Después selecciona
+            “Sí” o “No” para cada jugador y guarda la asistencia.
+          </p>
+
+          <p id="training-message" class="form-message"></p>
+        </div>
+
+        <div id="attendance-container" class="attendance-container">
+          <p class="empty-state">
+            No hay entrenamientos registrados.
+          </p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Firebase: Authentication + Firestore, sin Storage -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+  <!-- JavaScript de la aplicación -->
+  <script src="UTC.js"></script>
+</body>
+</html>

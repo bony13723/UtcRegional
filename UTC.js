@@ -1,0 +1,2579 @@
+// =====================================================
+// 1. CONFIGURACIÓN DE FIREBASE
+// =====================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyAnOXA4LiM6Ctl9060WSQltj_uKoXdyUTg",
+  authDomain: "regional-utc.firebaseapp.com",
+  projectId: "regional-utc",
+  storageBucket: "regional-utc.firebasestorage.app",
+  messagingSenderId: "757926590007",
+  appId: "1:757926590007:web:e5ad7a96ed6de2790a31b2",
+  measurementId: "G-JX2810B11K"
+};
+
+// =====================================================
+// 2. INICIALIZACIÓN
+// =====================================================
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// =====================================================
+// 3. ESTADO GLOBAL
+// =====================================================
+let currentUser = null;
+let currentUserRole = "jugador";
+let currentUserName = "Usuario";
+let isAdmin = false;
+
+let players = [];
+let coaches = [];
+let finePeople = [];
+let fines = [];
+
+let currentConvocation = null;
+let currentHighlights = null;
+
+let matches = [];
+let selectedMatchId = null;
+let matchesUnsubscribe = null;
+
+let playersUnsubscribe = null;
+let coachesUnsubscribe = null;
+let finesUnsubscribe = null;
+let trainingsUnsubscribe = null;
+let convocationUnsubscribe = null;
+let highlightsUnsubscribe = null;
+
+
+// =====================================================
+// 4. CATÁLOGO DE MULTAS
+// =====================================================
+const FINE_CATALOG = [
+  {
+    code: "V_CONV",
+    description: "Victoria de jugador convocado",
+    amount: 1
+  },
+  {
+    code: "V_NO_CONV",
+    description: "Victoria de jugador no convocado",
+    amount: 0.5
+  },
+  {
+    code: "E_CONV",
+    description: "Empate de jugador convocado",
+    amount: 0.5
+  },
+  {
+    code: "T_ENT_1",
+    description: "Llegar tarde al entrenamiento entre 21:00 y 21:05",
+    amount: 1
+  },
+  {
+    code: "T_ENT_2",
+    description: "Llegar tarde al entrenamiento entre 21:05 y 21:10",
+    amount: 1.5
+  },
+  {
+    code: "T_ENT_3",
+    description: "Llegar tarde al entrenamiento entre 21:10 y 21:15",
+    amount: 2
+  },
+  {
+    code: "T_PAR",
+    description: "Llegar tarde a un partido (importe por minuto)",
+    amount: 0.2
+  },
+  {
+    code: "MOVIL",
+    description: "Uso del móvil durante el entrenamiento",
+    amount: 1
+  },
+  {
+    code: "RECOGIDA",
+    description: "No recoger balones o material",
+    amount: 0.5
+  },
+  {
+    code: "AMAR_J",
+    description: "Tarjeta amarilla por protestar en el campo",
+    amount: 0.5
+  },
+  {
+    code: "AMAR_B",
+    description: "Tarjeta amarilla por protestar en el banquillo",
+    amount: 1
+  },
+  {
+    code: "ROJA_J",
+    description: "Tarjeta roja por protestar en el campo",
+    amount: 1
+  },
+  {
+    code: "ROJA_B",
+    description: "Tarjeta roja por protestar en el banquillo",
+    amount: 2
+  },
+  {
+    code: "PETO",
+    description: "No traer peto al entrenamiento",
+    amount: 0.2
+  },
+  {
+    code: "EQUIP",
+    description: "No traer equipación al partido (por prenda)",
+    amount: 2
+  },
+  {
+    code: "MENOSPRE",
+    description: "Menosprecio o insulto a rival / árbitro",
+    amount: 3
+  },
+  {
+    code: "INSULTO",
+    description: "Insultos racistas, homófobos u ofensivos graves",
+    amount: 5
+  },
+  {
+    code: "COMPA",
+    description: "Insulto o menosprecio grave a un compañero",
+    amount: 3
+  }
+];
+
+// =====================================================
+// 5. REFERENCIAS DEL DOM
+// =====================================================
+const loginSection = document.getElementById("login-section");
+const appSection = document.getElementById("app-section");
+
+const loginForm = document.getElementById("login-form");
+const loginError = document.getElementById("login-error");
+
+const loginView = document.getElementById("login-view");
+const registerView = document.getElementById("register-view");
+
+const registerForm = document.getElementById("register-form");
+const registerError = document.getElementById("register-error");
+
+const showRegisterBtn = document.getElementById("show-register-btn");
+const showLoginBtn = document.getElementById("show-login-btn");
+
+const showResetPasswordBtn = document.getElementById(
+  "show-reset-password-btn"
+);
+
+const resetPasswordView = document.getElementById(
+  "reset-password-view"
+);
+
+const resetPasswordForm = document.getElementById(
+  "reset-password-form"
+);
+
+const resetPasswordMessage = document.getElementById(
+  "reset-password-message"
+);
+
+const backToLoginBtn = document.getElementById(
+  "back-to-login-btn"
+);
+
+const userInfo = document.getElementById("user-info");
+
+const playersTableBody = document.getElementById("players-table-body");
+const finesTableBody = document.getElementById("fines-table-body");
+const statsTableBody = document.getElementById("stats-table-body");
+const attendanceContainer = document.getElementById("attendance-container");
+
+const playersCount = document.getElementById("players-count");
+const finesTotal = document.getElementById("fines-total");
+
+const playerMessage = document.getElementById("player-message");
+const fineMessage = document.getElementById("fine-message");
+const statMessage = document.getElementById("stat-message");
+const trainingMessage = document.getElementById("training-message");
+
+const fineCode = document.getElementById("fine-code");
+const fineReason = document.getElementById("fine-reason");
+const fineAmount = document.getElementById("fine-amount");
+const fineCatalogBody = document.getElementById("fine-catalog-body");
+
+const myFinesTableBody = document.getElementById("my-fines-table-body");
+const myFinesTotal = document.getElementById("my-fines-total");
+
+const homeWelcome = document.getElementById("home-welcome");
+const homeRoleTitle = document.getElementById("home-role-title");
+const homeRoleText = document.getElementById("home-role-text");
+
+// CONVOCATORIA
+const convocationStatus = document.getElementById("convocation-status");
+const convocationLocation = document.getElementById("convocation-location");
+const convocationDate = document.getElementById("convocation-date");
+const convocationTime = document.getElementById("convocation-time");
+
+const convocationImageContainer = document.getElementById(
+  "convocation-image-container"
+);
+
+const calledPlayersCount = document.getElementById("called-players-count");
+const calledPlayersList = document.getElementById("called-players-list");
+
+const convocationForm = document.getElementById("convocation-form");
+const convocationLocationInput = document.getElementById(
+  "convocation-location-input"
+);
+const convocationDateInput = document.getElementById(
+  "convocation-date-input"
+);
+const convocationTimeInput = document.getElementById(
+  "convocation-time-input"
+);
+const convocationImageUrlInput = document.getElementById(
+  "convocation-image-url-input"
+);
+const convocationPlayersSelector = document.getElementById(
+  "convocation-players-selector"
+);
+const convocationMessage = document.getElementById("convocation-message");
+
+// JUGADAS DESTACADAS
+const highlightsDate = document.getElementById("highlights-date");
+const highlightsLocation = document.getElementById("highlights-location");
+const highlightsScorers = document.getElementById("highlights-scorers");
+
+const highlightsVideoContainer = document.getElementById(
+  "highlights-video-container"
+);
+
+const highlightsForm = document.getElementById("highlights-form");
+const highlightsDateInput = document.getElementById(
+  "highlights-date-input"
+);
+const highlightsLocationInput = document.getElementById(
+  "highlights-location-input"
+);
+const highlightsScorersInput = document.getElementById(
+  "highlights-scorers-input"
+);
+const highlightsVideoUrlInput = document.getElementById(
+  "highlights-video-url-input"
+);
+const highlightsMessage = document.getElementById("highlights-message");
+
+const goToHighlightsBtn = document.getElementById("go-to-highlights-btn");
+const backToConvocationBtn = document.getElementById(
+  "back-to-convocation-btn"
+);
+const matchHistoryList = document.getElementById("match-history-list");
+const matchHistoryCount = document.getElementById("match-history-count");
+const selectedMatchLabel = document.getElementById("selected-match-label");
+
+// =====================================================
+// 6. UTILIDADES
+// =====================================================
+function showMessage(element, message, type = "success") {
+  if (!element) return;
+
+  element.textContent = message;
+  element.classList.remove("success-message", "error-message");
+  element.classList.add(type === "error" ? "error-message" : "success-message");
+
+  window.setTimeout(() => {
+    element.textContent = "";
+    element.classList.remove("success-message", "error-message");
+  }, 4000);
+}
+
+function escapeHTML(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function normaliseName(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "EUR"
+  }).format(Number(value || 0));
+}
+
+function formatDate(dateString) {
+  if (!dateString) return "-";
+
+  const parts = String(dateString).split("-");
+
+  if (parts.length !== 3) return dateString;
+
+  const [year, month, day] = parts;
+
+  return `${day}/${month}/${year}`;
+}
+
+function formatMatchDate(dateString) {
+  if (!dateString) return "Pendiente de confirmar";
+  return formatDate(dateString);
+}
+
+function getTodayDate() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function getLastDayOfJune() {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+
+  const juneThisYear = new Date(currentYear, 5, 30);
+  const targetYear = now > juneThisYear ? currentYear + 1 : currentYear;
+
+  return `${targetYear}-06-30`;
+}
+
+function defaultStats() {
+  return {
+    goles: 0,
+    asistencias: 0,
+    golesSegundoPalo: 0,
+    amarillasProtestar: 0,
+    amarillasFalta: 0,
+    rojas: 0,
+    sextasFaltas: 0,
+    penaltisCometidos: 0,
+    penaltisProvocados: 0
+  };
+}
+
+function stopListeners() {
+  if (playersUnsubscribe) playersUnsubscribe();
+  if (coachesUnsubscribe) coachesUnsubscribe();
+  if (finesUnsubscribe) finesUnsubscribe();
+  if (trainingsUnsubscribe) trainingsUnsubscribe();
+  if (convocationUnsubscribe) convocationUnsubscribe();
+  if (highlightsUnsubscribe) highlightsUnsubscribe();
+  if (matchesUnsubscribe) matchesUnsubscribe();
+
+  playersUnsubscribe = null;
+  coachesUnsubscribe = null;
+  finesUnsubscribe = null;
+  trainingsUnsubscribe = null;
+  convocationUnsubscribe = null;
+  highlightsUnsubscribe = null;
+  matchesUnsubscribe = null;
+}
+
+function setAdminInterface() {
+  document.querySelectorAll(".admin-only").forEach((element) => {
+    element.classList.toggle("hidden", !isAdmin);
+  });
+
+  document.querySelectorAll(".admin-column").forEach((element) => {
+    element.classList.toggle("hidden", !isAdmin);
+  });
+}
+
+function updateHomePage(userName) {
+  if (!homeWelcome || !homeRoleTitle || !homeRoleText) return;
+
+  homeWelcome.textContent = `Hola, ${userName}.`;
+
+  if (isAdmin) {
+    homeRoleTitle.textContent = "Modo entrenador activo";
+    homeRoleText.textContent =
+      "Puedes consultar y gestionar jugadores, multas, convocatorias, estadísticas, entrenamientos y asistencias.";
+  } else {
+    homeRoleTitle.textContent = "Modo jugador activo";
+    homeRoleText.textContent =
+      "Puedes consultar la información del equipo. La edición está reservada a los entrenadores.";
+  }
+}
+
+// =====================================================
+// 7. AUTENTICACIÓN Y ROL
+// =====================================================
+auth.onAuthStateChanged(async (user) => {
+  stopListeners();
+
+  if (!user) {
+    currentUser = null;
+    currentUserRole = "jugador";
+    currentUserName = "Usuario";
+    isAdmin = false;
+    players = [];
+    coaches = [];
+    finePeople = [];
+    fines = [];
+
+    loginSection.classList.remove("hidden");
+    appSection.classList.add("hidden");
+
+    if (loginView && registerView && resetPasswordView) {
+  registerView.classList.add("hidden");
+  resetPasswordView.classList.add("hidden");
+  loginView.classList.remove("hidden");
+  }
+
+    return;
+  }
+
+  try {
+    currentUser = user;
+
+    const userDocRef = db.collection("usuarios").doc(user.uid);
+    const userDoc = await userDocRef.get();
+
+    let profileData = {};
+
+    if (!userDoc.exists) {
+      profileData = {
+        nombre: user.displayName || "",
+        email: user.email || "",
+        rol: "jugador"
+      };
+
+      await userDocRef.set({
+        ...profileData,
+        creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      currentUserRole = "jugador";
+    } else {
+      profileData = userDoc.data();
+      currentUserRole = profileData.rol || "jugador";
+    }
+
+    isAdmin = currentUserRole === "entrenador";
+
+    currentUserName =
+  profileData.nombre ||
+  user.displayName ||
+  user.email ||
+  "Usuario";
+
+    loginSection.classList.add("hidden");
+    appSection.classList.remove("hidden");
+
+    userInfo.textContent = `${currentUserName} · ${
+      isAdmin ? "Entrenador" : "Jugador"
+    }`;
+
+    setAdminInterface();
+    updateHomePage(currentUserName);
+    setTrainingDateLimits();
+
+    renderFineCatalog();
+    renderFineCodeSelect();
+
+    loadPlayers();
+    loadCoaches();
+    loadFines();
+    loadTrainings();
+    loadConvocation();
+    loadHighlights();
+    loadMatchesHistory();
+
+    showSection("inicio");
+  } catch (error) {
+    console.error(error);
+
+    appSection.classList.add("hidden");
+    loginSection.classList.remove("hidden");
+
+    loginError.textContent =
+      "No se pudo comprobar el perfil del usuario. Revisa las reglas de Firestore.";
+
+    await auth.signOut();
+  }
+});
+
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  loginError.textContent = "";
+
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+    loginForm.reset();
+  } catch (error) {
+    console.error(error);
+
+    const messages = {
+      "auth/invalid-email": "El correo electrónico no tiene un formato válido.",
+      "auth/user-not-found": "No existe ningún usuario con ese correo.",
+      "auth/wrong-password": "La contraseña no es correcta.",
+      "auth/invalid-credential": "Correo o contraseña incorrectos.",
+      "auth/too-many-requests":
+        "Demasiados intentos. Espera unos minutos e inténtalo de nuevo."
+    };
+
+    loginError.textContent =
+      messages[error.code] || "No se ha podido iniciar sesión.";
+  }
+});
+
+document.getElementById("logout-btn").addEventListener("click", async () => {
+  await auth.signOut();
+});
+
+// =====================================================
+// 8. REGISTRO
+// =====================================================
+if (showRegisterBtn) {
+  showRegisterBtn.addEventListener("click", () => {
+    loginView.classList.add("hidden");
+    resetPasswordView.classList.add("hidden");
+    registerView.classList.remove("hidden");
+
+    loginError.textContent = "";
+    registerError.textContent = "";
+    resetPasswordMessage.textContent = "";
+  });
+}
+
+if (showLoginBtn) {
+  showLoginBtn.addEventListener("click", () => {
+    registerView.classList.add("hidden");
+    resetPasswordView.classList.add("hidden");
+    loginView.classList.remove("hidden");
+
+    loginError.textContent = "";
+    registerError.textContent = "";
+    resetPasswordMessage.textContent = "";
+  });
+}
+
+if (showResetPasswordBtn) {
+  showResetPasswordBtn.addEventListener("click", () => {
+    loginView.classList.add("hidden");
+    registerView.classList.add("hidden");
+    resetPasswordView.classList.remove("hidden");
+
+    loginError.textContent = "";
+    registerError.textContent = "";
+    resetPasswordMessage.textContent = "";
+
+    /*
+      Copia automáticamente el correo del login si el usuario
+      ya lo había escrito antes de pulsar “He olvidado mi contraseña”.
+    */
+    const loginEmail = document.getElementById("email").value.trim();
+
+    if (loginEmail) {
+      document.getElementById("reset-email").value = loginEmail;
+    }
+  });
+}
+
+if (backToLoginBtn) {
+  backToLoginBtn.addEventListener("click", () => {
+    resetPasswordView.classList.add("hidden");
+    registerView.classList.add("hidden");
+    loginView.classList.remove("hidden");
+
+    resetPasswordMessage.textContent = "";
+  });
+}
+
+
+// =====================================================
+// RECUPERACIÓN DE CONTRASEÑA
+// =====================================================
+if (resetPasswordForm) {
+  resetPasswordForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const email = document.getElementById("reset-email").value.trim();
+
+    resetPasswordMessage.textContent = "";
+    resetPasswordMessage.classList.remove(
+      "success-message",
+      "error-message"
+    );
+
+    if (!email) {
+      resetPasswordMessage.textContent =
+        "Escribe el correo electrónico con el que te registraste.";
+
+      resetPasswordMessage.classList.add("error-message");
+      return;
+    }
+
+    try {
+      /*
+        Firebase envía automáticamente un correo con un enlace
+        seguro para que el usuario cree una contraseña nueva.
+      */
+      await auth.sendPasswordResetEmail(email);
+
+      resetPasswordMessage.textContent =
+        "Correo enviado. Revisa tu bandeja de entrada y la carpeta de spam.";
+
+      resetPasswordMessage.classList.add("success-message");
+
+      resetPasswordForm.reset();
+    } catch (error) {
+      console.error(error);
+
+      const messages = {
+        "auth/invalid-email":
+          "El correo electrónico no tiene un formato válido.",
+
+        "auth/user-not-found":
+          "No existe ninguna cuenta con ese correo.",
+
+        "auth/too-many-requests":
+          "Se han realizado demasiados intentos. Espera unos minutos antes de volver a intentarlo."
+      };
+
+      resetPasswordMessage.textContent =
+        messages[error.code] ||
+        "No se ha podido enviar el correo de recuperación.";
+
+      resetPasswordMessage.classList.add("error-message");
+    }
+  });
+}
+
+
+if (registerForm) {
+  registerForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const name = document.getElementById("register-name").value.trim();
+    const email = document.getElementById("register-email").value.trim();
+    const password = document.getElementById("register-password").value;
+    const passwordConfirm = document.getElementById(
+      "register-password-confirm"
+    ).value;
+
+    registerError.textContent = "";
+
+    if (!name) {
+      registerError.textContent = "Escribe tu nombre.";
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      registerError.textContent = "Las contraseñas no coinciden.";
+      return;
+    }
+
+    if (password.length < 6) {
+      registerError.textContent =
+        "La contraseña debe tener al menos 6 caracteres.";
+      return;
+    }
+
+    const coachNames = ["bony", "santi"];
+    const normalisedName = normaliseName(name);
+
+    const role = coachNames.includes(normalisedName)
+      ? "entrenador"
+      : "jugador";
+
+    try {
+      const credential = await auth.createUserWithEmailAndPassword(
+        email,
+        password
+      );
+
+      await credential.user.updateProfile({
+        displayName: name
+      });
+
+      await db.collection("usuarios").doc(credential.user.uid).set({
+        nombre: name,
+        email,
+        rol: role,
+        creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      registerForm.reset();
+    } catch (error) {
+      console.error(error);
+
+      const messages = {
+        "auth/email-already-in-use":
+          "Ya existe una cuenta registrada con este correo.",
+        "auth/invalid-email":
+          "El correo electrónico no es válido.",
+        "auth/weak-password":
+          "La contraseña debe tener al menos 6 caracteres."
+      };
+
+      registerError.textContent =
+        messages[error.code] || "No se ha podido crear la cuenta.";
+    }
+  });
+}
+
+// =====================================================
+// 9. NAVEGACIÓN
+// =====================================================
+document.querySelectorAll(".nav-btn").forEach((button) => {
+  button.addEventListener("click", () => {
+    showSection(button.dataset.section);
+  });
+});
+
+document.querySelectorAll("[data-go-to]").forEach((button) => {
+  button.addEventListener("click", () => {
+    showSection(button.dataset.goTo);
+  });
+});
+
+function showSection(sectionId) {
+  document.querySelectorAll(".section-panel").forEach((section) => {
+    section.classList.add("hidden");
+  });
+
+  const selectedSection = document.getElementById(sectionId);
+
+  if (!selectedSection) {
+    console.error(`No existe la sección con id="${sectionId}".`);
+    return;
+  }
+
+  selectedSection.classList.remove("hidden");
+
+  document.querySelectorAll(".nav-btn").forEach((button) => {
+    button.classList.toggle("active", button.dataset.section === sectionId);
+  });
+}
+
+// =====================================================
+// 10. PLANTILLA
+// =====================================================
+document
+  .getElementById("add-player-form")
+  .addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!isAdmin) return;
+
+    const name = document.getElementById("player-name").value.trim();
+    const position = document.getElementById("player-position").value;
+    const number = Number(document.getElementById("player-number").value);
+    const leg = document.getElementById("player-leg").value;
+
+    try {
+      const existingDorsal = players.some(
+        (player) => Number(player.dorsal) === number
+      );
+
+      if (existingDorsal) {
+        showMessage(
+          playerMessage,
+          "Ya existe un jugador con ese dorsal.",
+          "error"
+        );
+        return;
+      }
+
+      await db.collection("jugadores").add({
+        nombre: name,
+        posicion: position,
+        dorsal: number,
+        piernaDominante: leg,
+        estadisticas: defaultStats(),
+        creadoEn: firebase.firestore.FieldValue.serverTimestamp(),
+        creadoPor: currentUser.uid
+      });
+
+      event.target.reset();
+      showMessage(playerMessage, "Jugador añadido correctamente.");
+    } catch (error) {
+      console.error(error);
+      showMessage(
+        playerMessage,
+        "No se ha podido añadir el jugador.",
+        "error"
+      );
+    }
+  });
+
+function loadPlayers() {
+  playersUnsubscribe = db
+    .collection("jugadores")
+    .orderBy("dorsal", "asc")
+    .onSnapshot(
+      (snapshot) => {
+        players = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        buildFinePeople();
+        renderPlayers();
+        renderPlayerSelects();
+        renderStats();
+        renderMyFines(fines);
+        renderConvocationPlayersSelector();
+      },
+      (error) => {
+        console.error(error);
+
+        playersTableBody.innerHTML = `
+          <tr>
+            <td colspan="5">
+              No se pueden cargar los jugadores. Revisa las reglas de Firestore.
+            </td>
+          </tr>
+        `;
+      }
+    );
+}
+
+function renderPlayers() {
+  playersCount.textContent = `${players.length} ${
+    players.length === 1 ? "jugador" : "jugadores"
+  }`;
+
+  if (!players.length) {
+    playersTableBody.innerHTML = `
+      <tr>
+        <td colspan="${isAdmin ? 5 : 4}" class="empty-state">
+          Todavía no hay jugadores registrados.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  playersTableBody.innerHTML = players
+    .map(
+      (player) => `
+        <tr>
+          <td>${escapeHTML(player.nombre)}</td>
+          <td>${escapeHTML(player.posicion)}</td>
+          <td>${escapeHTML(player.dorsal)}</td>
+          <td>${escapeHTML(player.piernaDominante)}</td>
+
+          ${
+            isAdmin
+              ? `
+              <td class="action-cell">
+                <button
+                  class="small-btn btn-danger"
+                  data-action="delete-player"
+                  data-id="${player.id}"
+                  data-name="${escapeHTML(player.nombre)}"
+                >
+                  Eliminar
+                </button>
+              </td>
+            `
+              : ""
+          }
+        </tr>
+      `
+    )
+    .join("");
+}
+
+playersTableBody.addEventListener("click", async (event) => {
+  const button = event.target.closest('[data-action="delete-player"]');
+
+  if (!button || !isAdmin) return;
+
+  const confirmed = window.confirm(
+    `¿Seguro que quieres eliminar a ${button.dataset.name}?`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await db.collection("jugadores").doc(button.dataset.id).delete();
+  } catch (error) {
+    console.error(error);
+    alert("No se ha podido eliminar al jugador.");
+  }
+});
+
+function loadCoaches() {
+  coachesUnsubscribe = db
+    .collection("usuarios")
+    .where("rol", "==", "entrenador")
+    .onSnapshot(
+      (snapshot) => {
+        coaches = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          nombre: doc.data().nombre || doc.data().email || "Entrenador",
+          email: doc.data().email || "",
+          rol: "entrenador",
+          tipo: "entrenador"
+        }));
+
+        buildFinePeople();
+        renderPlayerSelects();
+        renderMyFines(fines);
+      },
+      (error) => {
+        console.error("No se han podido cargar los entrenadores:", error);
+
+        coaches = [];
+        buildFinePeople();
+        renderPlayerSelects();
+      }
+    );
+}
+
+function buildFinePeople() {
+  const playerPeople = players.map((player) => ({
+    id: player.id,
+    nombre: player.nombre,
+    dorsal: player.dorsal,
+    tipo: "jugador",
+    rol: "jugador"
+  }));
+
+  const coachPeople = coaches.map((coach) => ({
+    id: coach.id,
+    nombre: coach.nombre,
+    email: coach.email,
+    tipo: "entrenador",
+    rol: "entrenador"
+  }));
+
+  finePeople = [...playerPeople, ...coachPeople];
+}
+
+function renderPlayerSelects() {
+  const finePlayerSelect = document.getElementById("fine-player");
+  const statPlayerSelect = document.getElementById("stat-player");
+
+  if (finePlayerSelect) {
+    const selectedValue = finePlayerSelect.value;
+
+    finePlayerSelect.innerHTML = `
+      <option value="">Selecciona una persona</option>
+
+      ${finePeople
+        .map(
+          (person) => `
+            <option value="${person.id}">
+              ${escapeHTML(person.nombre)} · ${
+                person.tipo === "jugador"
+                  ? `Jugador · #${escapeHTML(person.dorsal)}`
+                  : "Entrenador"
+              }
+            </option>
+          `
+        )
+        .join("")}
+    `;
+
+    if (finePeople.some((person) => person.id === selectedValue)) {
+      finePlayerSelect.value = selectedValue;
+    }
+  }
+
+  if (statPlayerSelect) {
+    const selectedValue = statPlayerSelect.value;
+
+    statPlayerSelect.innerHTML = `
+      <option value="">Selecciona un jugador</option>
+
+      ${players
+        .map(
+          (player) => `
+            <option value="${player.id}">
+              ${escapeHTML(player.nombre)} · #${escapeHTML(player.dorsal)}
+            </option>
+          `
+        )
+        .join("")}
+    `;
+
+    if (players.some((player) => player.id === selectedValue)) {
+      statPlayerSelect.value = selectedValue;
+    }
+  }
+}
+
+// =====================================================
+// 11. MULTAS
+// =====================================================
+function renderFineCatalog() {
+  if (!fineCatalogBody) return;
+
+  fineCatalogBody.innerHTML = FINE_CATALOG.map(
+    (fine) => `
+      <tr>
+        <td><strong>${escapeHTML(fine.code)}</strong></td>
+        <td>${escapeHTML(fine.description)}</td>
+        <td>${formatCurrency(fine.amount)}</td>
+      </tr>
+    `
+  ).join("");
+}
+
+function renderFineCodeSelect() {
+  if (!fineCode) return;
+
+  fineCode.innerHTML = `
+    <option value="">Selecciona un código</option>
+
+    ${FINE_CATALOG.map(
+      (fine) => `
+        <option value="${fine.code}">
+          ${fine.code} · ${fine.description}
+        </option>
+      `
+    ).join("")}
+  `;
+}
+
+function fillFineDataFromCode() {
+  if (!fineCode || !fineReason || !fineAmount) return;
+
+  const selectedFine = FINE_CATALOG.find(
+    (fine) => fine.code === fineCode.value
+  );
+
+  if (!selectedFine) {
+    fineReason.value = "";
+    fineAmount.value = "";
+    return;
+  }
+
+  fineReason.value = selectedFine.description;
+  fineAmount.value = selectedFine.amount.toFixed(2);
+}
+
+function getCurrentFinePerson() {
+  const registeredName = normaliseName(currentUserName);
+
+  const playerMatch = players.find(
+    (player) => normaliseName(player.nombre) === registeredName
+  );
+
+  if (playerMatch) {
+    return {
+      id: playerMatch.id,
+      nombre: playerMatch.nombre,
+      tipo: "jugador"
+    };
+  }
+
+  const coachMatch = coaches.find(
+    (coach) => normaliseName(coach.nombre) === registeredName
+  );
+
+  if (coachMatch) {
+    return {
+      id: coachMatch.id,
+      nombre: coachMatch.nombre,
+      tipo: "entrenador"
+    };
+  }
+
+  return null;
+}
+
+function renderMyFines(finesList) {
+  if (!myFinesTableBody || !myFinesTotal) return;
+
+  const linkedPerson = getCurrentFinePerson();
+
+  if (!linkedPerson) {
+    myFinesTotal.textContent = "Debes: 0,00 €";
+
+    myFinesTableBody.innerHTML = `
+      <tr>
+        <td colspan="4" class="empty-state">
+          Tu cuenta no está asociada a un jugador o entrenador.
+          El nombre de registro debe coincidir con el perfil correspondiente.
+        </td>
+      </tr>
+    `;
+
+    return;
+  }
+
+  const myFines = finesList.filter(
+    (fine) =>
+      fine.personaId === linkedPerson.id ||
+      fine.jugadorId === linkedPerson.id
+  );
+
+  const myTotal = myFines.reduce(
+    (sum, fine) => sum + Number(fine.importe || 0),
+    0
+  );
+
+  myFinesTotal.textContent = `Debes: ${formatCurrency(myTotal)}`;
+
+  if (!myFines.length) {
+    myFinesTableBody.innerHTML = `
+      <tr>
+        <td colspan="4" class="empty-state">
+          No tienes multas registradas.
+        </td>
+      </tr>
+    `;
+
+    return;
+  }
+
+  myFinesTableBody.innerHTML = myFines
+    .map(
+      (fine) => `
+        <tr>
+          <td>${formatDate(fine.fecha)}</td>
+          <td><strong>${escapeHTML(fine.codigo || "-")}</strong></td>
+          <td>${escapeHTML(fine.motivo)}</td>
+          <td>${formatCurrency(fine.importe)}</td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
+const fineDateInput = document.getElementById("fine-date");
+
+if (fineDateInput) {
+  fineDateInput.value = getTodayDate();
+}
+
+if (fineCode) {
+  fineCode.addEventListener("change", fillFineDataFromCode);
+}
+
+document
+  .getElementById("add-fine-form")
+  .addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!isAdmin) return;
+
+    const personId = document.getElementById("fine-player").value;
+    const code = fineCode.value;
+    const date = fineDateInput.value;
+
+    const person = finePeople.find((item) => item.id === personId);
+
+    const selectedFine = FINE_CATALOG.find(
+      (fine) => fine.code === code
+    );
+
+    if (!person) {
+      showMessage(
+        fineMessage,
+        "Selecciona un jugador o entrenador válido.",
+        "error"
+      );
+      return;
+    }
+
+    if (!selectedFine) {
+      showMessage(
+        fineMessage,
+        "Selecciona un código de multa válido.",
+        "error"
+      );
+      return;
+    }
+
+    if (!date) {
+      showMessage(fineMessage, "Selecciona una fecha.", "error");
+      return;
+    }
+
+    try {
+      await db.collection("multas").add({
+        personaId: person.id,
+        personaNombre: person.nombre,
+        personaTipo: person.tipo,
+
+        jugadorId: person.tipo === "jugador" ? person.id : null,
+        jugadorNombre: person.tipo === "jugador" ? person.nombre : null,
+
+        codigo: selectedFine.code,
+        motivo: selectedFine.description,
+        importe: selectedFine.amount,
+        fecha: date,
+        creadoPor: currentUser.uid,
+        creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      event.target.reset();
+      fineDateInput.value = getTodayDate();
+
+      fillFineDataFromCode();
+
+      showMessage(
+        fineMessage,
+        `Multa ${selectedFine.code} añadida a ${person.nombre}.`
+      );
+    } catch (error) {
+      console.error(error);
+
+      showMessage(
+        fineMessage,
+        "No se ha podido añadir la multa.",
+        "error"
+      );
+    }
+  });
+
+function loadFines() {
+  finesUnsubscribe = db
+    .collection("multas")
+    .orderBy("fecha", "desc")
+    .onSnapshot(
+      (snapshot) => {
+        fines = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        renderFines(fines);
+        renderMyFines(fines);
+      },
+      (error) => {
+        console.error(error);
+
+        finesTableBody.innerHTML = `
+          <tr>
+            <td colspan="${isAdmin ? 6 : 5}">
+              No se pueden cargar las multas.
+            </td>
+          </tr>
+        `;
+      }
+    );
+}
+
+function renderFines(finesList) {
+  const total = finesList.reduce(
+    (sum, fine) => sum + Number(fine.importe || 0),
+    0
+  );
+
+  finesTotal.textContent = `Total general: ${formatCurrency(total)}`;
+
+  if (!finesList.length) {
+    finesTableBody.innerHTML = `
+      <tr>
+        <td colspan="${isAdmin ? 6 : 5}" class="empty-state">
+          No hay multas registradas.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  finesTableBody.innerHTML = finesList
+    .map(
+      (fine) => `
+        <tr>
+          <td>${formatDate(fine.fecha)}</td>
+
+          <td>
+            ${escapeHTML(
+              fine.personaNombre ||
+                fine.jugadorNombre ||
+                "Sin asignar"
+            )}
+
+            ${
+              fine.personaTipo === "entrenador"
+                ? '<span class="role-label">Entrenador</span>'
+                : ""
+            }
+          </td>
+
+          <td>
+            <strong>${escapeHTML(fine.codigo || "-")}</strong>
+          </td>
+
+          <td>${escapeHTML(fine.motivo)}</td>
+          <td>${formatCurrency(fine.importe)}</td>
+
+          ${
+            isAdmin
+              ? `
+              <td class="action-cell">
+                <button
+                  class="small-btn btn-danger"
+                  data-action="delete-fine"
+                  data-id="${fine.id}"
+                >
+                  Eliminar
+                </button>
+              </td>
+            `
+              : ""
+          }
+        </tr>
+      `
+    )
+    .join("");
+}
+
+finesTableBody.addEventListener("click", async (event) => {
+  const button = event.target.closest('[data-action="delete-fine"]');
+
+  if (!button || !isAdmin) return;
+
+  const confirmed = window.confirm("¿Quieres eliminar esta multa?");
+
+  if (!confirmed) return;
+
+  try {
+    await db.collection("multas").doc(button.dataset.id).delete();
+  } catch (error) {
+    console.error(error);
+    alert("No se ha podido eliminar la multa.");
+  }
+});
+
+// =====================================================
+// 12. CONVOCATORIA
+// =====================================================
+function getDriveFileId(url) {
+  if (!url) return null;
+
+  try {
+    const parsedUrl = new URL(url);
+
+    const fileMatch = parsedUrl.pathname.match(
+      /\/file\/d\/([^/]+)/
+    );
+
+    if (fileMatch && fileMatch[1]) {
+      return fileMatch[1];
+    }
+
+    return parsedUrl.searchParams.get("id");
+  } catch {
+    return null;
+  }
+}
+
+function getDriveImageUrl(url) {
+  const fileId = getDriveFileId(url);
+
+  if (!fileId) {
+    return url;
+  }
+
+  /*
+    Google Drive dejó de permitir de forma fiable las URLs
+    /uc?export=view para <img>. La ruta thumbnail funciona
+    mejor para insertar imágenes en páginas web.
+  */
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`;
+}
+
+function getDrivePreviewUrl(url) {
+  const fileId = getDriveFileId(url);
+
+  if (!fileId) return null;
+
+  return `https://drive.google.com/file/d/${fileId}/preview`;
+}
+
+function renderConvocationPlayersSelector() {
+  if (!convocationPlayersSelector) return;
+
+  const selectedIds =
+    currentConvocation?.convocados?.map((player) => player.id) || [];
+
+  if (!players.length) {
+    convocationPlayersSelector.innerHTML = `
+      <p class="empty-state">
+        Primero añade jugadores en la sección Plantilla.
+      </p>
+    `;
+    return;
+  }
+
+  convocationPlayersSelector.innerHTML = players
+    .map(
+      (player) => `
+        <label class="player-checkbox">
+          <input
+            type="checkbox"
+            name="convocated-player"
+            value="${player.id}"
+            ${selectedIds.includes(player.id) ? "checked" : ""}
+          />
+
+          <span>
+            ${escapeHTML(player.nombre)} · #${escapeHTML(player.dorsal)}
+          </span>
+        </label>
+      `
+    )
+    .join("");
+}
+
+function renderConvocation(convocation) {
+  currentConvocation = convocation;
+
+  if (!convocation) {
+    convocationStatus.textContent = "Sin convocatoria publicada";
+
+    convocationLocation.textContent = "Pendiente de confirmar";
+    convocationDate.textContent = "Pendiente de confirmar";
+    convocationTime.textContent = "Pendiente de confirmar";
+
+    convocationImageContainer.innerHTML = `
+      <p class="empty-state">
+        Todavía no se ha publicado una imagen de convocatoria.
+      </p>
+    `;
+
+    calledPlayersCount.textContent = "0 convocados";
+
+    calledPlayersList.innerHTML = `
+      <p class="empty-state">
+        Todavía no hay jugadores convocados.
+      </p>
+    `;
+
+    renderConvocationPlayersSelector();
+    return;
+  }
+
+  console.log("Renderizando convocatoria:", convocation);
+
+  convocationStatus.textContent = "Convocatoria publicada";
+
+  convocationLocation.textContent =
+    convocation.ubicacion || "Pendiente de confirmar";
+
+  convocationDate.textContent =
+    formatMatchDate(convocation.fecha);
+
+  convocationTime.textContent =
+    convocation.hora || "Pendiente de confirmar";
+
+  /*
+    Se utiliza directamente el enlace guardado en Firestore.
+    Para Google Drive, se transforma a una URL de visualización.
+  */
+  const imageUrl = convocation.imageUrl
+  ? getDriveImageUrl(convocation.imageUrl)
+  : null;
+
+if (imageUrl) {
+  convocationImageContainer.innerHTML = `
+    <img
+      src="${escapeHTML(imageUrl)}"
+      alt="Imagen de convocatoria del partido"
+      class="convocation-image"
+      referrerpolicy="no-referrer"
+      onerror="
+        this.style.display='none';
+        this.parentElement.insertAdjacentHTML(
+          'beforeend',
+          '<p class=&quot;empty-state&quot;>No se ha podido mostrar la imagen. Comprueba que el archivo de Google Drive esté compartido como “Cualquier persona con el enlace → Lector”.</p>'
+        );
+      "
+    />
+  `;
+} else {
+  convocationImageContainer.innerHTML = `
+    <p class="empty-state">
+      La convocatoria se ha publicado sin imagen.
+    </p>
+  `;
+}
+
+  const calledPlayers = Array.isArray(convocation.convocados)
+    ? convocation.convocados
+    : [];
+
+  calledPlayersCount.textContent = `${calledPlayers.length} ${
+    calledPlayers.length === 1
+      ? "convocado"
+      : "convocados"
+  }`;
+
+  if (!calledPlayers.length) {
+    calledPlayersList.innerHTML = `
+      <p class="empty-state">
+        No hay jugadores convocados en esta convocatoria.
+      </p>
+    `;
+  } else {
+    calledPlayersList.innerHTML = calledPlayers
+      .map(
+        (player) => `
+          <article class="called-player-card">
+            <span class="called-player-number">
+              #${escapeHTML(player.dorsal ?? "")}
+            </span>
+
+            <strong>
+              ${escapeHTML(player.nombre || "Jugador")}
+            </strong>
+
+            <span>
+              ${escapeHTML(player.posicion || "")}
+            </span>
+          </article>
+        `
+      )
+      .join("");
+  }
+
+  if (isAdmin) {
+    convocationLocationInput.value =
+      convocation.ubicacion || "";
+
+    convocationDateInput.value =
+      convocation.fecha || "";
+
+    convocationTimeInput.value =
+      convocation.hora || "";
+
+    convocationImageUrlInput.value =
+      convocation.imageUrl || "";
+  }
+
+  renderConvocationPlayersSelector();
+}
+
+function loadConvocation() {
+  if (!convocationStatus) {
+    console.error("Falta #convocation-status en el HTML.");
+    return;
+  }
+
+  convocationUnsubscribe = db
+    .collection("convocatorias")
+    .doc("actual")
+    .onSnapshot(
+      (doc) => {
+        console.log(
+          "Convocatoria recibida:",
+          doc.exists,
+          doc.data()
+        );
+
+        if (!doc.exists) {
+          renderConvocation(null);
+          return;
+        }
+
+        renderConvocation(doc.data());
+      },
+      (error) => {
+        console.error(
+          "Error leyendo convocatorias/actual:",
+          error
+        );
+
+        convocationStatus.textContent = "Error al cargar convocatoria";
+        convocationLocation.textContent = "No disponible";
+        convocationDate.textContent = "No disponible";
+        convocationTime.textContent = "No disponible";
+
+        convocationImageContainer.innerHTML = `
+          <p class="empty-state">
+            No se ha podido cargar la convocatoria.
+          </p>
+        `;
+
+        calledPlayersList.innerHTML = `
+          <p class="empty-state">
+            No se han podido cargar los convocados.
+          </p>
+        `;
+      }
+    );
+}
+
+if (convocationForm) {
+  convocationForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!isAdmin) return;
+
+    const ubicacion = convocationLocationInput.value.trim();
+    const fecha = convocationDateInput.value;
+    const hora = convocationTimeInput.value;
+    const imageUrl = convocationImageUrlInput.value.trim();
+
+    const selectedIds = [
+      ...document.querySelectorAll(
+        'input[name="convocated-player"]:checked'
+      )
+    ].map((input) => input.value);
+
+    const convocados = players
+      .filter((player) => selectedIds.includes(player.id))
+      .map((player) => ({
+        id: player.id,
+        nombre: player.nombre,
+        dorsal: player.dorsal,
+        posicion: player.posicion
+      }));
+
+    if (!ubicacion || !fecha || !hora) {
+      showMessage(
+        convocationMessage,
+        "Completa ubicación, fecha y hora.",
+        "error"
+      );
+      return;
+    }
+
+    if (!convocados.length) {
+      showMessage(
+        convocationMessage,
+        "Selecciona al menos un jugador convocado.",
+        "error"
+      );
+      return;
+    }
+
+    if (imageUrl && !getDriveFileId(imageUrl)) {
+      showMessage(
+        convocationMessage,
+        "Pega un enlace válido de Google Drive.",
+        "error"
+      );
+      return;
+    }
+
+    try {
+      const existingMatch = matches.find((match) => {
+    return (
+      match.fecha === fecha &&
+      match.hora === hora &&
+      match.ubicacion === ubicacion
+    );
+  });
+
+    const matchData = {
+      ubicacion,
+      fecha,
+      hora,
+      convocados,
+      imageUrl: imageUrl || null,
+      actualizadoPor: currentUser.uid,
+      actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    let matchId;
+
+    if (existingMatch) {
+      /*
+        Si es el mismo partido, actualiza su convocatoria
+        sin borrar las jugadas destacadas que se hayan añadido.
+      */
+      matchId = existingMatch.id;
+
+      await db.collection("partidos").doc(matchId).set(
+        matchData,
+        { merge: true }
+      );
+    } else {
+      /*
+        Si es una convocatoria nueva, crea un documento nuevo
+        dentro de la colección partidos.
+      */
+      const createdMatch = await db.collection("partidos").add({
+        ...matchData,
+        estado: "convocatoria",
+        creadoPor: currentUser.uid,
+        creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      matchId = createdMatch.id;
+    }
+
+    /*
+      Mantiene convocatorias/actual para seguir mostrando
+      rápidamente el próximo partido en la pantalla principal
+      de Convocatoria.
+    */
+    await db.collection("convocatorias").doc("actual").set(
+      {
+        ...matchData,
+        partidoId: matchId
+      },
+      { merge: true }
+    );
+
+    /*
+      Recordamos qué partido es el actual para poder subir
+      después sus jugadas destacadas.
+    */
+    selectedMatchId = matchId;
+
+    showMessage(
+      convocationMessage,
+      "Convocatoria guardada correctamente en el historial."
+    );
+    } catch (error) {
+      console.error(error);
+
+      showMessage(
+        convocationMessage,
+        "No se ha podido publicar la convocatoria.",
+        "error"
+      );
+    }
+  });
+}
+
+
+// =====================================================
+// HISTORIAL DE PARTIDOS Y CONVOCATORIAS
+// =====================================================
+
+function getMatchStatus(match) {
+  return match.videoUrl || match.goleadores
+    ? "Finalizado"
+    : "Convocatoria";
+}
+
+function renderMatchesHistory() {
+  if (!matchHistoryList || !matchHistoryCount) return;
+
+  matchHistoryCount.textContent = `${matches.length} ${
+    matches.length === 1 ? "partido" : "partidos"
+  }`;
+
+  if (!matches.length) {
+    matchHistoryList.innerHTML = `
+      <p class="empty-state">
+        Todavía no hay convocatorias o partidos anteriores.
+      </p>
+    `;
+    return;
+  }
+
+  matchHistoryList.innerHTML = matches
+    .map((match) => {
+      const status = getMatchStatus(match);
+      const statusClass =
+        status === "Finalizado" ? "finished" : "";
+
+      return `
+        <button
+          type="button"
+          class="match-history-card"
+          data-action="open-match"
+          data-match-id="${match.id}"
+        >
+          <div>
+            <p class="eyebrow">Partido</p>
+            <h4>${formatMatchDate(match.fecha)}</h4>
+          </div>
+
+          <p>${escapeHTML(match.ubicacion || "Ubicación pendiente")}</p>
+
+          <p>
+            ${match.hora ? `Hora: ${escapeHTML(match.hora)}` : "Hora pendiente"}
+          </p>
+
+          <div class="match-history-card-footer">
+            <span>${(match.convocados || []).length} convocados</span>
+
+            <span class="match-history-status ${statusClass}">
+              ${status}
+            </span>
+          </div>
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function loadMatchesHistory() {
+  matchesUnsubscribe = db
+    .collection("partidos")
+    .orderBy("fecha", "desc")
+    .onSnapshot(
+      (snapshot) => {
+        matches = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        renderMatchesHistory();
+      },
+      (error) => {
+        console.error("Error al cargar historial de partidos:", error);
+
+        if (matchHistoryList) {
+          matchHistoryList.innerHTML = `
+            <p class="empty-state">
+              No se ha podido cargar el historial de partidos.
+            </p>
+          `;
+        }
+      }
+    );
+}
+
+function renderSelectedMatch(match) {
+  if (!match) return;
+
+  selectedMatchId = match.id;
+
+  if (selectedMatchLabel) {
+    selectedMatchLabel.textContent =
+      `Partido seleccionado: ${formatMatchDate(match.fecha)} · ${
+        match.ubicacion || "Ubicación pendiente"
+      }`;
+  }
+
+  highlightsDate.textContent = formatMatchDate(match.fecha);
+  highlightsLocation.textContent =
+    match.ubicacion || "Pendiente de confirmar";
+
+  highlightsScorers.textContent =
+    match.goleadores || "Sin registrar";
+
+  const previewUrl = getDrivePreviewUrl(match.videoUrl);
+
+  if (previewUrl) {
+    highlightsVideoContainer.innerHTML = `
+      <iframe
+        class="highlights-video"
+        src="${escapeHTML(previewUrl)}"
+        title="Jugadas destacadas del partido"
+        allow="autoplay"
+        allowfullscreen
+      ></iframe>
+    `;
+  } else {
+    highlightsVideoContainer.innerHTML = `
+      <p class="empty-state">
+        Todavía no se ha publicado un vídeo de jugadas destacadas para este partido.
+      </p>
+    `;
+  }
+
+  if (isAdmin) {
+    highlightsDateInput.value = match.fecha || "";
+    highlightsLocationInput.value = match.ubicacion || "";
+    highlightsScorersInput.value = match.goleadores || "";
+    highlightsVideoUrlInput.value = match.videoUrl || "";
+  }
+}
+
+if (matchHistoryList) {
+  matchHistoryList.addEventListener("click", (event) => {
+    const button = event.target.closest(
+      '[data-action="open-match"]'
+    );
+
+    if (!button) return;
+
+    const match = matches.find(
+      (item) => item.id === button.dataset.matchId
+    );
+
+    if (!match) return;
+
+    renderSelectedMatch(match);
+    showSection("jugadas-destacadas");
+  });
+}
+
+
+// =====================================================
+// 13. JUGADAS DESTACADAS
+// =====================================================
+function renderHighlights(highlights) {
+  currentHighlights = highlights;
+
+  if (!highlights) {
+    highlightsDate.textContent = "Pendiente de confirmar";
+    highlightsLocation.textContent = "Pendiente de confirmar";
+    highlightsScorers.textContent = "Sin registrar";
+
+    highlightsVideoContainer.innerHTML = `
+      <p class="empty-state">
+        Todavía no se ha publicado un vídeo de jugadas destacadas.
+      </p>
+    `;
+
+    return;
+  }
+
+  highlightsDate.textContent = formatMatchDate(highlights.fecha);
+  highlightsLocation.textContent =
+    highlights.ubicacion || "Pendiente de confirmar";
+  highlightsScorers.textContent =
+    highlights.goleadores || "Sin registrar";
+
+  const previewUrl = getDrivePreviewUrl(highlights.videoUrl);
+
+  if (previewUrl) {
+    highlightsVideoContainer.innerHTML = `
+      <iframe
+        class="highlights-video"
+        src="${escapeHTML(previewUrl)}"
+        title="Jugadas destacadas del partido"
+        allow="autoplay"
+        allowfullscreen
+      ></iframe>
+    `;
+  } else {
+    highlightsVideoContainer.innerHTML = `
+      <p class="empty-state">
+        Todavía no se ha publicado un vídeo de jugadas destacadas.
+      </p>
+    `;
+  }
+
+  if (isAdmin) {
+    highlightsDateInput.value = highlights.fecha || "";
+    highlightsLocationInput.value = highlights.ubicacion || "";
+    highlightsScorersInput.value = highlights.goleadores || "";
+    highlightsVideoUrlInput.value = highlights.videoUrl || "";
+  }
+}
+
+function loadHighlights() {
+  /*
+    Este listener mantiene la información del último vídeo
+    publicado para la sección actual de Jugadas destacadas.
+  */
+  highlightsUnsubscribe = db
+    .collection("jugadasDestacadas")
+    .doc("actual")
+    .onSnapshot(
+      (doc) => {
+        console.log(
+          "Jugadas destacadas actuales recibidas:",
+          doc.exists,
+          doc.data()
+        );
+
+        renderHighlights(doc.exists ? doc.data() : null);
+      },
+      (error) => {
+        console.error(
+          "Error al cargar jugadas destacadas actuales:",
+          error
+        );
+
+        if (highlightsVideoContainer) {
+          highlightsVideoContainer.innerHTML = `
+            <p class="empty-state">
+              No se han podido cargar las jugadas destacadas.
+            </p>
+          `;
+        }
+      }
+    );
+}
+
+if (highlightsForm) {
+  highlightsForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!isAdmin) return;
+
+    const fecha = highlightsDateInput.value;
+    const ubicacion = highlightsLocationInput.value.trim();
+    const goleadores = highlightsScorersInput.value.trim();
+    const videoUrl = highlightsVideoUrlInput.value.trim();
+
+    if (!fecha || !ubicacion || !goleadores) {
+      showMessage(
+        highlightsMessage,
+        "Completa fecha, ubicación y goleadores.",
+        "error"
+      );
+      return;
+    }
+
+    if (videoUrl && !getDriveFileId(videoUrl)) {
+      showMessage(
+        highlightsMessage,
+        "Pega un enlace válido de un vídeo de Google Drive.",
+        "error"
+      );
+      return;
+    }
+
+    /*
+      Prioridad para decidir a qué partido se asigna el vídeo:
+
+      1. selectedMatchId:
+         El entrenador abrió un partido desde el historial.
+
+      2. currentConvocation.partidoId:
+         Es el partido asociado a la convocatoria actual.
+
+      3. Búsqueda por fecha, ubicación y hora:
+         Evita perder el vínculo si se refresca la web.
+    */
+    let targetMatchId =
+      selectedMatchId ||
+      currentConvocation?.partidoId ||
+      null;
+
+    try {
+      if (!targetMatchId) {
+        const matchSnapshot = await db
+          .collection("partidos")
+          .where("fecha", "==", fecha)
+          .where("ubicacion", "==", ubicacion)
+          .get();
+
+        if (!matchSnapshot.empty) {
+          targetMatchId = matchSnapshot.docs[0].id;
+        }
+      }
+
+      if (!targetMatchId) {
+        showMessage(
+          highlightsMessage,
+          "No se ha encontrado un partido asociado. Publica primero una convocatoria o abre un partido desde el historial.",
+          "error"
+        );
+        return;
+      }
+
+      const highlightsData = {
+        fecha,
+        ubicacion,
+        goleadores,
+        videoUrl: videoUrl || null,
+        estado: "finalizado",
+        actualizadoPor: currentUser.uid,
+        actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      /*
+        Guarda vídeo, goleadores y datos finales en el documento
+        del partido seleccionado. La convocatoria queda intacta.
+      */
+      await db.collection("partidos").doc(targetMatchId).set(
+        highlightsData,
+        { merge: true }
+      );
+
+      /*
+        Mantiene el documento "actual" para la pantalla de
+        Jugadas destacadas sin tener que seleccionar un partido.
+      */
+      await db.collection("jugadasDestacadas").doc("actual").set(
+        {
+          ...highlightsData,
+          partidoId: targetMatchId
+        },
+        { merge: true }
+      );
+
+      /*
+        Deja seleccionado el partido para que, si el entrenador
+        edita de nuevo las jugadas, se actualice el mismo documento.
+      */
+      selectedMatchId = targetMatchId;
+
+      showMessage(
+        highlightsMessage,
+        "Jugadas destacadas guardadas en el historial del partido."
+      );
+    } catch (error) {
+      console.error(error);
+
+      showMessage(
+        highlightsMessage,
+        "No se han podido publicar las jugadas destacadas.",
+        "error"
+      );
+    }
+  });
+}
+
+if (goToHighlightsBtn) {
+  goToHighlightsBtn.addEventListener("click", () => {
+    /*
+      Si no se seleccionó un partido histórico, el formulario
+      se referirá al partido de convocatoria actual.
+    */
+    selectedMatchId =
+      selectedMatchId ||
+      currentConvocation?.partidoId ||
+      null;
+
+    showSection("jugadas-destacadas");
+  });
+}
+
+if (backToConvocationBtn) {
+  backToConvocationBtn.addEventListener("click", () => {
+    showSection("convocatoria");
+  });
+}
+
+
+if (goToHighlightsBtn) {
+  goToHighlightsBtn.addEventListener("click", () => {
+    showSection("jugadas-destacadas");
+  });
+}
+
+if (backToConvocationBtn) {
+  backToConvocationBtn.addEventListener("click", () => {
+    showSection("convocatoria");
+  });
+}
+
+// =====================================================
+// 14. ESTADÍSTICAS
+// =====================================================
+document
+  .getElementById("update-stat-form")
+  .addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!isAdmin) return;
+
+    const playerId = document.getElementById("stat-player").value;
+    const statType = document.getElementById("stat-type").value;
+    const amount = Number(document.getElementById("stat-value").value);
+
+    if (!playerId) {
+      showMessage(statMessage, "Selecciona un jugador.", "error");
+      return;
+    }
+
+    if (!Number.isInteger(amount) || amount === 0) {
+      showMessage(
+        statMessage,
+        "Introduce un número entero distinto de cero.",
+        "error"
+      );
+      return;
+    }
+
+    const player = players.find((item) => item.id === playerId);
+
+    if (!player) {
+      showMessage(
+        statMessage,
+        "El jugador seleccionado no existe.",
+        "error"
+      );
+      return;
+    }
+
+    const currentValue = Number(player.estadisticas?.[statType] || 0);
+    const newValue = currentValue + amount;
+
+    if (newValue < 0) {
+      showMessage(
+        statMessage,
+        "La estadística no puede quedar por debajo de cero.",
+        "error"
+      );
+      return;
+    }
+
+    try {
+      await db.collection("jugadores").doc(playerId).update({
+        [`estadisticas.${statType}`]: newValue,
+        actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      showMessage(statMessage, "Estadística actualizada correctamente.");
+    } catch (error) {
+      console.error(error);
+
+      showMessage(
+        statMessage,
+        "No se ha podido actualizar la estadística.",
+        "error"
+      );
+    }
+  });
+
+function renderStats() {
+  if (!players.length) {
+    statsTableBody.innerHTML = `
+      <tr>
+        <td colspan="10" class="empty-state">
+          Añade jugadores para mostrar las estadísticas.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  statsTableBody.innerHTML = players
+    .map((player) => {
+      const stats = {
+        ...defaultStats(),
+        ...(player.estadisticas || {})
+      };
+
+      return `
+        <tr>
+          <td>${escapeHTML(player.nombre)} · #${escapeHTML(player.dorsal)}</td>
+          <td>${stats.goles}</td>
+          <td>${stats.asistencias}</td>
+          <td>${stats.golesSegundoPalo}</td>
+          <td>${stats.amarillasProtestar}</td>
+          <td>${stats.amarillasFalta}</td>
+          <td>${stats.rojas}</td>
+          <td>${stats.sextasFaltas}</td>
+          <td>${stats.penaltisCometidos}</td>
+          <td>${stats.penaltisProvocados}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+// =====================================================
+// 15. ENTRENAMIENTOS Y ASISTENCIA
+// =====================================================
+function setTrainingDateLimits() {
+  const input = document.getElementById("training-date");
+
+  if (!input) return;
+
+  input.min = getTodayDate();
+  input.max = getLastDayOfJune();
+}
+
+document
+  .getElementById("add-training-form")
+  .addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!isAdmin) return;
+
+    const date = document.getElementById("training-date").value;
+
+    if (!date) {
+      showMessage(trainingMessage, "Selecciona una fecha.", "error");
+      return;
+    }
+
+    if (date > getLastDayOfJune()) {
+      showMessage(
+        trainingMessage,
+        "Solo puedes añadir entrenamientos hasta el 30 de junio.",
+        "error"
+      );
+      return;
+    }
+
+    try {
+      const existingTraining = await db
+        .collection("entrenamientos")
+        .where("fecha", "==", date)
+        .get();
+
+      if (!existingTraining.empty) {
+        showMessage(
+          trainingMessage,
+          "Ya existe un entrenamiento para esa fecha.",
+          "error"
+        );
+        return;
+      }
+
+      await db.collection("entrenamientos").add({
+        fecha: date,
+        creadoPor: currentUser.uid,
+        creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      event.target.reset();
+
+      showMessage(
+        trainingMessage,
+        "Entrenamiento añadido correctamente."
+      );
+    } catch (error) {
+      console.error(error);
+
+      showMessage(
+        trainingMessage,
+        "No se ha podido añadir el entrenamiento.",
+        "error"
+      );
+    }
+  });
+
+function loadTrainings() {
+  trainingsUnsubscribe = db
+    .collection("entrenamientos")
+    .orderBy("fecha", "asc")
+    .onSnapshot(
+      async (snapshot) => {
+        const trainings = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        await renderTrainings(trainings);
+      },
+      (error) => {
+        console.error(error);
+
+        attendanceContainer.innerHTML = `
+          <p class="empty-state">
+            No se pueden cargar los entrenamientos. Revisa las reglas de Firestore.
+          </p>
+        `;
+      }
+    );
+}
+
+async function renderTrainings(trainings) {
+  if (!trainings.length) {
+    attendanceContainer.innerHTML = `
+      <p class="empty-state">
+        No hay entrenamientos registrados.
+      </p>
+    `;
+    return;
+  }
+
+  try {
+    const attendancePromises = trainings.map(async (training) => {
+      const attendanceSnapshot = await db
+        .collection("entrenamientos")
+        .doc(training.id)
+        .collection("asistencias")
+        .get();
+
+      const attendanceMap = {};
+
+      attendanceSnapshot.forEach((doc) => {
+        attendanceMap[doc.id] = doc.data();
+      });
+
+      return {
+        ...training,
+        attendanceMap
+      };
+    });
+
+    const trainingsWithAttendance = await Promise.all(
+      attendancePromises
+    );
+
+    attendanceContainer.innerHTML = trainingsWithAttendance
+      .map((training) => {
+        const rows = players.length
+          ? players
+              .map((player) => {
+                const attendance = training.attendanceMap[player.id];
+                const attended = attendance?.asistio;
+
+                if (!isAdmin) {
+                  const readableStatus =
+                    attended === true
+                      ? "Sí"
+                      : attended === false
+                      ? "No"
+                      : "Sin registrar";
+
+                  return `
+                    <div class="attendance-row">
+                      <strong>
+                        ${escapeHTML(player.nombre)} · #${escapeHTML(player.dorsal)}
+                      </strong>
+
+                      <span>${readableStatus}</span>
+
+                      <span class="attendance-status">
+                        Solo lectura
+                      </span>
+                    </div>
+                  `;
+                }
+
+                return `
+                  <div class="attendance-row">
+                    <strong>
+                      ${escapeHTML(player.nombre)} · #${escapeHTML(player.dorsal)}
+                    </strong>
+
+                    <select
+                      class="attendance-select"
+                      data-training-id="${training.id}"
+                      data-player-id="${player.id}"
+                    >
+                      <option value="" ${
+                        attended === undefined ? "selected" : ""
+                      }>
+                        Sin registrar
+                      </option>
+
+                      <option value="si" ${
+                        attended === true ? "selected" : ""
+                      }>
+                        Sí
+                      </option>
+
+                      <option value="no" ${
+                        attended === false ? "selected" : ""
+                      }>
+                        No
+                      </option>
+                    </select>
+
+                    <button
+                      class="small-btn btn-primary"
+                      data-action="save-attendance"
+                      data-training-id="${training.id}"
+                      data-player-id="${player.id}"
+                      data-player-name="${escapeHTML(player.nombre)}"
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                `;
+              })
+              .join("")
+          : `
+            <div class="attendance-row">
+              <span>No hay jugadores registrados.</span>
+            </div>
+          `;
+
+        return `
+          <article class="training-card">
+            <div class="training-card-header">
+              <h3>Entrenamiento: ${formatDate(training.fecha)}</h3>
+
+              ${
+                isAdmin
+                  ? `
+                  <button
+                    class="small-btn btn-danger"
+                    data-action="delete-training"
+                    data-training-id="${training.id}"
+                  >
+                    Eliminar fecha
+                  </button>
+                `
+                  : ""
+              }
+            </div>
+
+            <div class="attendance-list">
+              ${rows}
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+  } catch (error) {
+    console.error(error);
+
+    attendanceContainer.innerHTML = `
+      <p class="empty-state">
+        No se ha podido cargar la asistencia.
+      </p>
+    `;
+  }
+}
+
+attendanceContainer.addEventListener("click", async (event) => {
+  const saveButton = event.target.closest(
+    '[data-action="save-attendance"]'
+  );
+
+  const deleteButton = event.target.closest(
+    '[data-action="delete-training"]'
+  );
+
+  if (saveButton && isAdmin) {
+    const trainingId = saveButton.dataset.trainingId;
+    const playerId = saveButton.dataset.playerId;
+    const playerName = saveButton.dataset.playerName;
+
+    const selector = document.querySelector(
+      `.attendance-select[data-training-id="${trainingId}"][data-player-id="${playerId}"]`
+    );
+
+    if (!selector || selector.value === "") {
+      alert("Selecciona Sí o No antes de guardar.");
+      return;
+    }
+
+    try {
+      await db
+        .collection("entrenamientos")
+        .doc(trainingId)
+        .collection("asistencias")
+        .doc(playerId)
+        .set({
+          jugadorId: playerId,
+          jugadorNombre: playerName,
+          asistio: selector.value === "si",
+          actualizadoPor: currentUser.uid,
+          actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+      saveButton.textContent = "Guardado";
+
+      window.setTimeout(() => {
+        saveButton.textContent = "Guardar";
+      }, 1500);
+    } catch (error) {
+      console.error(error);
+      alert("No se ha podido guardar la asistencia.");
+    }
+  }
+
+  if (deleteButton && isAdmin) {
+    const trainingId = deleteButton.dataset.trainingId;
+
+    const confirmed = window.confirm(
+      "¿Quieres eliminar este entrenamiento y sus asistencias?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const attendanceSnapshot = await db
+        .collection("entrenamientos")
+        .doc(trainingId)
+        .collection("asistencias")
+        .get();
+
+      const batch = db.batch();
+
+      attendanceSnapshot.forEach((document) => {
+        batch.delete(document.ref);
+      });
+
+      batch.delete(
+        db.collection("entrenamientos").doc(trainingId)
+      );
+
+      await batch.commit();
+    } catch (error) {
+      console.error(error);
+      alert("No se ha podido eliminar el entrenamiento.");
+    }
+  }
+});
