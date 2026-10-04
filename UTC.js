@@ -33,6 +33,7 @@ let finePeople = [];
 let fines = [];
 
 let currentConvocation = null;
+let creatingNewConvocation = false;
 let currentHighlights = null;
 
 let matches = [];
@@ -241,6 +242,10 @@ const convocationMessage = document.getElementById("convocation-message");
 
 const editConvocationBtn = document.getElementById(
   "edit-convocation-btn"
+);
+
+const newConvocationBtn = document.getElementById(
+  "new-convocation-btn"
 );
 
 const convocationEditor = document.getElementById(
@@ -1471,8 +1476,32 @@ function renderConvocationPlayersSelector() {
     .join("");
 }
 
-function openConvocationEditor() {
+function clearConvocationForm() {
+  if (convocationLocationInput) {
+    convocationLocationInput.value = "";
+  }
+
+  if (convocationDateInput) {
+    convocationDateInput.value = "";
+  }
+
+  if (convocationTimeInput) {
+    convocationTimeInput.value = "";
+  }
+
+  if (convocationImageUrlInput) {
+    convocationImageUrlInput.value = "";
+  }
+}
+
+function openConvocationEditor({ isNew = false } = {}) {
   if (!isAdmin || !convocationEditor) return;
+
+  creatingNewConvocation = isNew;
+
+  if (isNew) {
+    clearConvocationForm();
+  }
 
   convocationEditor.classList.remove("hidden");
 
@@ -1480,22 +1509,20 @@ function openConvocationEditor() {
     editConvocationBtn.classList.add("hidden");
   }
 
-  if (currentConvocation) {
-    if (convocationEditorTitle) {
-      convocationEditorTitle.textContent = "Editar convocatoria";
-    }
+  if (newConvocationBtn) {
+    newConvocationBtn.classList.add("hidden");
+  }
 
-    if (saveConvocationBtn) {
-      saveConvocationBtn.textContent = "Guardar cambios";
-    }
-  } else {
-    if (convocationEditorTitle) {
-      convocationEditorTitle.textContent = "Publicar convocatoria";
-    }
+  if (convocationEditorTitle) {
+    convocationEditorTitle.textContent = isNew
+      ? "Nueva convocatoria"
+      : "Editar convocatoria";
+  }
 
-    if (saveConvocationBtn) {
-      saveConvocationBtn.textContent = "Publicar convocatoria";
-    }
+  if (saveConvocationBtn) {
+    saveConvocationBtn.textContent = isNew
+      ? "Publicar convocatoria"
+      : "Guardar cambios";
   }
 
   renderConvocationPlayersSelector();
@@ -1506,19 +1533,32 @@ function closeConvocationEditor() {
     convocationEditor.classList.add("hidden");
   }
 
-  if (editConvocationBtn && isAdmin && currentConvocation) {
+  if (!isAdmin) return;
+
+  if (currentConvocation && editConvocationBtn) {
     editConvocationBtn.classList.remove("hidden");
+  }
+
+  if (newConvocationBtn) {
+    newConvocationBtn.classList.remove("hidden");
   }
 }
 
 if (editConvocationBtn) {
   editConvocationBtn.addEventListener("click", () => {
-    openConvocationEditor();
+    openConvocationEditor({ isNew: false });
+  });
+}
+
+if (newConvocationBtn) {
+  newConvocationBtn.addEventListener("click", () => {
+    openConvocationEditor({ isNew: true });
   });
 }
 
 if (cancelConvocationEditBtn) {
   cancelConvocationEditBtn.addEventListener("click", () => {
+    creatingNewConvocation = false;
     closeConvocationEditor();
   });
 }
@@ -1548,16 +1588,24 @@ function renderConvocation(convocation) {
     `;
 
     if (isAdmin) {
+      creatingNewConvocation = false;
+
       if (editConvocationBtn) {
         editConvocationBtn.classList.add("hidden");
       }
 
+      if (newConvocationBtn) {
+        newConvocationBtn.classList.add("hidden");
+      }
+
       if (convocationEditorTitle) {
-        convocationEditorTitle.textContent = "Publicar convocatoria";
+        convocationEditorTitle.textContent =
+          "Publicar convocatoria";
       }
 
       if (saveConvocationBtn) {
-        saveConvocationBtn.textContent = "Publicar convocatoria";
+        saveConvocationBtn.textContent =
+          "Publicar convocatoria";
       }
 
       if (convocationLocationInput) {
@@ -1576,7 +1624,8 @@ function renderConvocation(convocation) {
         convocationImageUrlInput.value = "";
       }
 
-      openConvocationEditor();
+      renderConvocationPlayersSelector();
+      openConvocationEditor({ isNew: true });
     }
 
     renderConvocationPlayersSelector();
@@ -1661,30 +1710,46 @@ function renderConvocation(convocation) {
   }
 
   if (isAdmin) {
-    convocationLocationInput.value =
-      convocation.ubicacion || "";
+    /*
+      Cuando llega una convocatoria ya publicada desde Firestore,
+      dejamos el formulario preparado para editarla, pero oculto.
+    */
+    creatingNewConvocation = false;
 
-    convocationDateInput.value =
-      convocation.fecha || "";
+    if (convocationLocationInput) {
+      convocationLocationInput.value =
+        convocation.ubicacion || "";
+    }
 
-    convocationTimeInput.value =
-      convocation.hora || "";
+    if (convocationDateInput) {
+      convocationDateInput.value =
+        convocation.fecha || "";
+    }
 
-    convocationImageUrlInput.value =
-      convocation.imageUrl || "";
+    if (convocationTimeInput) {
+      convocationTimeInput.value =
+        convocation.hora || "";
+    }
+
+    if (convocationImageUrlInput) {
+      convocationImageUrlInput.value =
+        convocation.imageUrl || "";
+    }
 
     if (convocationEditorTitle) {
-      convocationEditorTitle.textContent = "Editar convocatoria";
+      convocationEditorTitle.textContent =
+        "Editar convocatoria";
     }
 
     if (saveConvocationBtn) {
       saveConvocationBtn.textContent = "Guardar cambios";
     }
 
+    renderConvocationPlayersSelector();
     closeConvocationEditor();
+  } else {
+    renderConvocationPlayersSelector();
   }
-
-  renderConvocationPlayersSelector();
 }
 
 function loadConvocation() {
@@ -1739,7 +1804,8 @@ if (convocationForm) {
 
     if (!isAdmin) return;
 
-    const wasEditing = Boolean(currentConvocation);
+    const wasEditing =
+      Boolean(currentConvocation) && !creatingNewConvocation;
 
     const ubicacion = convocationLocationInput.value.trim();
     const fecha = convocationDateInput.value;
@@ -1790,21 +1856,21 @@ if (convocationForm) {
 
     try {
       /*
-        Si la convocatoria actual ya está vinculada a un partido,
-        se actualiza ese mismo documento. Así no se duplica
-        el partido en el historial al editarlo.
+        Si se ha pulsado "Nueva convocatoria", no usamos el ID
+        de la convocatoria actual: crearemos un documento nuevo
+        en la colección "partidos".
       */
-      const currentMatchId = currentConvocation?.partidoId || null;
+      const currentMatchId = creatingNewConvocation
+        ? null
+        : currentConvocation?.partidoId || null;
 
+      /*
+        Solo buscamos un partido existente si estamos editando
+        la convocatoria actual.
+      */
       const existingMatch = currentMatchId
         ? matches.find((match) => match.id === currentMatchId)
-        : matches.find((match) => {
-            return (
-              match.fecha === fecha &&
-              match.hora === hora &&
-              match.ubicacion === ubicacion
-            );
-          });
+        : null;
 
       const matchData = {
         ubicacion,
@@ -1819,6 +1885,10 @@ if (convocationForm) {
       let matchId;
 
       if (existingMatch) {
+        /*
+          Edición: actualiza el documento del partido actual
+          sin borrar posibles jugadas destacadas ya registradas.
+        */
         matchId = existingMatch.id;
 
         await db.collection("partidos").doc(matchId).set(
@@ -1826,6 +1896,10 @@ if (convocationForm) {
           { merge: true }
         );
       } else {
+        /*
+          Primera convocatoria o nueva convocatoria:
+          crea un documento independiente para el historial.
+        */
         const createdMatch = await db.collection("partidos").add({
           ...matchData,
           estado: "convocatoria",
@@ -1836,6 +1910,10 @@ if (convocationForm) {
         matchId = createdMatch.id;
       }
 
+      /*
+        Actualiza el documento que representa la convocatoria
+        que se muestra como "actual" en la app.
+      */
       await db.collection("convocatorias").doc("actual").set(
         {
           ...matchData,
@@ -1845,6 +1923,12 @@ if (convocationForm) {
       );
 
       selectedMatchId = matchId;
+
+      /*
+        Ya se ha guardado: salimos del modo de creación para
+        que vuelvan a aparecer "Editar" y "Nueva convocatoria".
+      */
+      creatingNewConvocation = false;
 
       closeConvocationEditor();
 
