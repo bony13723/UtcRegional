@@ -676,8 +676,18 @@
         </section>
 
         <!-- FORMULARIO: SOLO ENTRENADORES -->
-        <section id="convocation-admin-container" class="admin-only">
-          <h3>Publicar convocatoria</h3>
+        <!-- EDICIÓN DE CONVOCATORIA: SOLO ENTRENADORES -->
+      <section id="convocation-admin-container" class="admin-only">
+        <button
+          id="edit-convocation-btn"
+          class="btn btn-outline-dark"
+          type="button"
+        >
+          Editar convocatoria
+        </button>
+
+        <div id="convocation-editor" class="hidden">
+          <h3 id="convocation-editor-title">Publicar convocatoria</h3>
 
           <form id="convocation-form" class="convocation-form">
             <div class="grid-form">
@@ -746,13 +756,28 @@
               </div>
             </div>
 
-            <button type="submit" class="btn btn-primary">
-              Publicar convocatoria
-            </button>
+            <div class="convocation-editor-actions">
+              <button
+                id="cancel-convocation-edit-btn"
+                type="button"
+                class="btn btn-outline-dark"
+              >
+                Cancelar
+              </button>
+
+              <button
+                id="save-convocation-btn"
+                type="submit"
+                class="btn btn-primary"
+              >
+                Publicar convocatoria
+              </button>
+            </div>
 
             <p id="convocation-message" class="form-message"></p>
           </form>
-        </section>
+        </div>
+      </section>
 
         <!-- ENLACE A JUGADAS DESTACADAS -->
         <section class="highlights-link-card">

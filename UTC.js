@@ -239,6 +239,26 @@ const convocationPlayersSelector = document.getElementById(
 );
 const convocationMessage = document.getElementById("convocation-message");
 
+const editConvocationBtn = document.getElementById(
+  "edit-convocation-btn"
+);
+
+const convocationEditor = document.getElementById(
+  "convocation-editor"
+);
+
+const convocationEditorTitle = document.getElementById(
+  "convocation-editor-title"
+);
+
+const cancelConvocationEditBtn = document.getElementById(
+  "cancel-convocation-edit-btn"
+);
+
+const saveConvocationBtn = document.getElementById(
+  "save-convocation-btn"
+);
+
 // JUGADAS DESTACADAS
 const highlightsDate = document.getElementById("highlights-date");
 const highlightsLocation = document.getElementById("highlights-location");
@@ -1345,7 +1365,7 @@ finesTableBody.addEventListener("click", async (event) => {
 });
 
 // =====================================================
-// 12. CONVOCATORIA
+// 12. CONVOCATORIA E HISTORIAL DE PARTIDOS
 // =====================================================
 function getDriveFileId(url) {
   if (!url) return null;
@@ -1374,11 +1394,6 @@ function getDriveImageUrl(url) {
     return url;
   }
 
-  /*
-    Google Drive dejó de permitir de forma fiable las URLs
-    /uc?export=view para <img>. La ruta thumbnail funciona
-    mejor para insertar imágenes en páginas web.
-  */
   return `https://drive.google.com/thumbnail?id=${fileId}&sz=w2000`;
 }
 
@@ -1425,6 +1440,58 @@ function renderConvocationPlayersSelector() {
     .join("");
 }
 
+function openConvocationEditor() {
+  if (!isAdmin || !convocationEditor) return;
+
+  convocationEditor.classList.remove("hidden");
+
+  if (editConvocationBtn) {
+    editConvocationBtn.classList.add("hidden");
+  }
+
+  if (currentConvocation) {
+    if (convocationEditorTitle) {
+      convocationEditorTitle.textContent = "Editar convocatoria";
+    }
+
+    if (saveConvocationBtn) {
+      saveConvocationBtn.textContent = "Guardar cambios";
+    }
+  } else {
+    if (convocationEditorTitle) {
+      convocationEditorTitle.textContent = "Publicar convocatoria";
+    }
+
+    if (saveConvocationBtn) {
+      saveConvocationBtn.textContent = "Publicar convocatoria";
+    }
+  }
+
+  renderConvocationPlayersSelector();
+}
+
+function closeConvocationEditor() {
+  if (convocationEditor) {
+    convocationEditor.classList.add("hidden");
+  }
+
+  if (editConvocationBtn && isAdmin && currentConvocation) {
+    editConvocationBtn.classList.remove("hidden");
+  }
+}
+
+if (editConvocationBtn) {
+  editConvocationBtn.addEventListener("click", () => {
+    openConvocationEditor();
+  });
+}
+
+if (cancelConvocationEditBtn) {
+  cancelConvocationEditBtn.addEventListener("click", () => {
+    closeConvocationEditor();
+  });
+}
+
 function renderConvocation(convocation) {
   currentConvocation = convocation;
 
@@ -1449,11 +1516,41 @@ function renderConvocation(convocation) {
       </p>
     `;
 
+    if (isAdmin) {
+      if (editConvocationBtn) {
+        editConvocationBtn.classList.add("hidden");
+      }
+
+      if (convocationEditorTitle) {
+        convocationEditorTitle.textContent = "Publicar convocatoria";
+      }
+
+      if (saveConvocationBtn) {
+        saveConvocationBtn.textContent = "Publicar convocatoria";
+      }
+
+      if (convocationLocationInput) {
+        convocationLocationInput.value = "";
+      }
+
+      if (convocationDateInput) {
+        convocationDateInput.value = "";
+      }
+
+      if (convocationTimeInput) {
+        convocationTimeInput.value = "";
+      }
+
+      if (convocationImageUrlInput) {
+        convocationImageUrlInput.value = "";
+      }
+
+      openConvocationEditor();
+    }
+
     renderConvocationPlayersSelector();
     return;
   }
-
-  console.log("Renderizando convocatoria:", convocation);
 
   convocationStatus.textContent = "Convocatoria publicada";
 
@@ -1466,37 +1563,33 @@ function renderConvocation(convocation) {
   convocationTime.textContent =
     convocation.hora || "Pendiente de confirmar";
 
-  /*
-    Se utiliza directamente el enlace guardado en Firestore.
-    Para Google Drive, se transforma a una URL de visualización.
-  */
   const imageUrl = convocation.imageUrl
-  ? getDriveImageUrl(convocation.imageUrl)
-  : null;
+    ? getDriveImageUrl(convocation.imageUrl)
+    : null;
 
-if (imageUrl) {
-  convocationImageContainer.innerHTML = `
-    <img
-      src="${escapeHTML(imageUrl)}"
-      alt="Imagen de convocatoria del partido"
-      class="convocation-image"
-      referrerpolicy="no-referrer"
-      onerror="
-        this.style.display='none';
-        this.parentElement.insertAdjacentHTML(
-          'beforeend',
-          '<p class=&quot;empty-state&quot;>No se ha podido mostrar la imagen. Comprueba que el archivo de Google Drive esté compartido como “Cualquier persona con el enlace → Lector”.</p>'
-        );
-      "
-    />
-  `;
-} else {
-  convocationImageContainer.innerHTML = `
-    <p class="empty-state">
-      La convocatoria se ha publicado sin imagen.
-    </p>
-  `;
-}
+  if (imageUrl) {
+    convocationImageContainer.innerHTML = `
+      <img
+        src="${escapeHTML(imageUrl)}"
+        alt="Imagen de convocatoria del partido"
+        class="convocation-image"
+        referrerpolicy="no-referrer"
+        onerror="
+          this.style.display='none';
+          this.parentElement.insertAdjacentHTML(
+            'beforeend',
+            '<p class=&quot;empty-state&quot;>No se ha podido mostrar la imagen. Comprueba que el archivo de Google Drive esté compartido como “Cualquier persona con el enlace → Lector”.</p>'
+          );
+        "
+      />
+    `;
+  } else {
+    convocationImageContainer.innerHTML = `
+      <p class="empty-state">
+        La convocatoria se ha publicado sin imagen.
+      </p>
+    `;
+  }
 
   const calledPlayers = Array.isArray(convocation.convocados)
     ? convocation.convocados
@@ -1548,6 +1641,16 @@ if (imageUrl) {
 
     convocationImageUrlInput.value =
       convocation.imageUrl || "";
+
+    if (convocationEditorTitle) {
+      convocationEditorTitle.textContent = "Editar convocatoria";
+    }
+
+    if (saveConvocationBtn) {
+      saveConvocationBtn.textContent = "Guardar cambios";
+    }
+
+    closeConvocationEditor();
   }
 
   renderConvocationPlayersSelector();
@@ -1564,12 +1667,6 @@ function loadConvocation() {
     .doc("actual")
     .onSnapshot(
       (doc) => {
-        console.log(
-          "Convocatoria recibida:",
-          doc.exists,
-          doc.data()
-        );
-
         if (!doc.exists) {
           renderConvocation(null);
           return;
@@ -1583,7 +1680,9 @@ function loadConvocation() {
           error
         );
 
-        convocationStatus.textContent = "Error al cargar convocatoria";
+        convocationStatus.textContent =
+          "Error al cargar convocatoria";
+
         convocationLocation.textContent = "No disponible";
         convocationDate.textContent = "No disponible";
         convocationTime.textContent = "No disponible";
@@ -1608,6 +1707,8 @@ if (convocationForm) {
     event.preventDefault();
 
     if (!isAdmin) return;
+
+    const wasEditing = Boolean(currentConvocation);
 
     const ubicacion = convocationLocationInput.value.trim();
     const fecha = convocationDateInput.value;
@@ -1657,92 +1758,86 @@ if (convocationForm) {
     }
 
     try {
-      const existingMatch = matches.find((match) => {
-    return (
-      match.fecha === fecha &&
-      match.hora === hora &&
-      match.ubicacion === ubicacion
-    );
-  });
-
-    const matchData = {
-      ubicacion,
-      fecha,
-      hora,
-      convocados,
-      imageUrl: imageUrl || null,
-      actualizadoPor: currentUser.uid,
-      actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    let matchId;
-
-    if (existingMatch) {
       /*
-        Si es el mismo partido, actualiza su convocatoria
-        sin borrar las jugadas destacadas que se hayan añadido.
+        Si la convocatoria actual ya está vinculada a un partido,
+        se actualiza ese mismo documento. Así no se duplica
+        el partido en el historial al editarlo.
       */
-      matchId = existingMatch.id;
+      const currentMatchId = currentConvocation?.partidoId || null;
 
-      await db.collection("partidos").doc(matchId).set(
-        matchData,
+      const existingMatch = currentMatchId
+        ? matches.find((match) => match.id === currentMatchId)
+        : matches.find((match) => {
+            return (
+              match.fecha === fecha &&
+              match.hora === hora &&
+              match.ubicacion === ubicacion
+            );
+          });
+
+      const matchData = {
+        ubicacion,
+        fecha,
+        hora,
+        convocados,
+        imageUrl: imageUrl || null,
+        actualizadoPor: currentUser.uid,
+        actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      let matchId;
+
+      if (existingMatch) {
+        matchId = existingMatch.id;
+
+        await db.collection("partidos").doc(matchId).set(
+          matchData,
+          { merge: true }
+        );
+      } else {
+        const createdMatch = await db.collection("partidos").add({
+          ...matchData,
+          estado: "convocatoria",
+          creadoPor: currentUser.uid,
+          creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        matchId = createdMatch.id;
+      }
+
+      await db.collection("convocatorias").doc("actual").set(
+        {
+          ...matchData,
+          partidoId: matchId
+        },
         { merge: true }
       );
-    } else {
-      /*
-        Si es una convocatoria nueva, crea un documento nuevo
-        dentro de la colección partidos.
-      */
-      const createdMatch = await db.collection("partidos").add({
-        ...matchData,
-        estado: "convocatoria",
-        creadoPor: currentUser.uid,
-        creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-      });
 
-      matchId = createdMatch.id;
-    }
+      selectedMatchId = matchId;
 
-    /*
-      Mantiene convocatorias/actual para seguir mostrando
-      rápidamente el próximo partido en la pantalla principal
-      de Convocatoria.
-    */
-    await db.collection("convocatorias").doc("actual").set(
-      {
-        ...matchData,
-        partidoId: matchId
-      },
-      { merge: true }
-    );
+      closeConvocationEditor();
 
-    /*
-      Recordamos qué partido es el actual para poder subir
-      después sus jugadas destacadas.
-    */
-    selectedMatchId = matchId;
-
-    showMessage(
-      convocationMessage,
-      "Convocatoria guardada correctamente en el historial."
-    );
+      showMessage(
+        convocationMessage,
+        wasEditing
+          ? "Convocatoria actualizada correctamente."
+          : "Convocatoria publicada correctamente."
+      );
     } catch (error) {
       console.error(error);
 
       showMessage(
         convocationMessage,
-        "No se ha podido publicar la convocatoria.",
+        "No se ha podido guardar la convocatoria.",
         "error"
       );
     }
   });
 }
 
-
 // =====================================================
-// HISTORIAL DE PARTIDOS Y CONVOCATORIAS
+// HISTORIAL DE CONVOCATORIAS Y PARTIDOS
 // =====================================================
-
 function getMatchStatus(match) {
   return match.videoUrl || match.goleadores
     ? "Finalizado"
@@ -1768,6 +1863,7 @@ function renderMatchesHistory() {
   matchHistoryList.innerHTML = matches
     .map((match) => {
       const status = getMatchStatus(match);
+
       const statusClass =
         status === "Finalizado" ? "finished" : "";
 
@@ -1783,10 +1879,18 @@ function renderMatchesHistory() {
             <h4>${formatMatchDate(match.fecha)}</h4>
           </div>
 
-          <p>${escapeHTML(match.ubicacion || "Ubicación pendiente")}</p>
+          <p>
+            ${escapeHTML(
+              match.ubicacion || "Ubicación pendiente"
+            )}
+          </p>
 
           <p>
-            ${match.hora ? `Hora: ${escapeHTML(match.hora)}` : "Hora pendiente"}
+            ${
+              match.hora
+                ? `Hora: ${escapeHTML(match.hora)}`
+                : "Hora pendiente"
+            }
           </p>
 
           <div class="match-history-card-footer">
@@ -1816,7 +1920,10 @@ function loadMatchesHistory() {
         renderMatchesHistory();
       },
       (error) => {
-        console.error("Error al cargar historial de partidos:", error);
+        console.error(
+          "Error al cargar historial de partidos:",
+          error
+        );
 
         if (matchHistoryList) {
           matchHistoryList.innerHTML = `
@@ -1842,6 +1949,7 @@ function renderSelectedMatch(match) {
   }
 
   highlightsDate.textContent = formatMatchDate(match.fecha);
+
   highlightsLocation.textContent =
     match.ubicacion || "Pendiente de confirmar";
 
@@ -1870,9 +1978,15 @@ function renderSelectedMatch(match) {
 
   if (isAdmin) {
     highlightsDateInput.value = match.fecha || "";
-    highlightsLocationInput.value = match.ubicacion || "";
-    highlightsScorersInput.value = match.goleadores || "";
-    highlightsVideoUrlInput.value = match.videoUrl || "";
+
+    highlightsLocationInput.value =
+      match.ubicacion || "";
+
+    highlightsScorersInput.value =
+      match.goleadores || "";
+
+    highlightsVideoUrlInput.value =
+      match.videoUrl || "";
   }
 }
 
