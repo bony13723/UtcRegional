@@ -826,29 +826,33 @@
         </section>
       </section>
 
-      <!-- =================================================
-           JUGADAS DESTACADAS
-           ================================================= -->
+<!-- =================================================
+     JUGADAS DESTACADAS
+================================================= -->
       <section id="jugadas-destacadas" class="section-panel hidden">
-        <div class="section-heading">
-          <div>
+        <div class="section-heading highlights-heading">
+          <div class="highlights-heading-title">
             <p class="eyebrow">Resumen del partido</p>
             <h2>Jugadas destacadas</h2>
           </div>
 
-          <button
-            id="back-to-convocation-btn"
-            class="btn btn-outline-dark"
-            type="button"
-          >
-            Volver a convocatoria
-          </button>
-          <p id="selected-match-label" class="selected-match-label">
-            Partido actual
-          </p>
-        </div>
+          <div class="highlights-heading-actions">
+            <p id="selected-match-label" class="selected-match-label">
+              Partido actual
+            </p>
 
-        <!-- INFORMACIÓN PÚBLICA DEL PARTIDO -->
+            <button
+              id="back-to-convocation-btn"
+              class="btn btn-outline-dark"
+              type="button"
+            >
+              Volver a convocatoria
+            </button>
+          </div>
+        </div>
+<!-- =================================================
+        INFORMACIÓN PÚBLICA DEL PARTIDO
+================================================= -->
         <section class="match-info-card">
           <div class="match-info-item">
             <span class="match-info-label">Fecha del partido</span>
@@ -885,82 +889,119 @@
             </p>
           </div>
         </section>
+<!-- FORMULARIO: SOLO ENTRENADORES -->
+    <section id="highlights-admin-container" class="admin-only">
+      <button
+        id="edit-highlights-btn"
+        class="btn btn-outline-dark"
+        type="button"
+      >
+        Editar jugadas destacadas
+      </button>
 
-        <!-- FORMULARIO: SOLO ENTRENADORES -->
-        <section id="highlights-admin-container" class="admin-only">
-          <h3>Publicar jugadas destacadas</h3>
+      <div id="highlights-editor" class="hidden">
+        <h3 id="highlights-editor-title">
+          Publicar jugadas destacadas
+        </h3>
 
-          <form id="highlights-form" class="highlights-form">
-            <div class="grid-form">
-              <div>
-                <label for="highlights-date-input">
-                  Fecha del partido
-                </label>
-
-                <input
-                  id="highlights-date-input"
-                  type="date"
-                  required
-                />
-              </div>
-
-              <div>
-                <label for="highlights-location-input">
-                  Ubicación
-                </label>
-
-                <input
-                  id="highlights-location-input"
-                  type="text"
-                  placeholder="Ej.: Polideportivo La Luz"
-                  required
-                />
-              </div>
-
-              <div>
-                <label for="highlights-scorers-input">
-                  Goleadores
-                </label>
-
-                <input
-                  id="highlights-scorers-input"
-                  type="text"
-                  placeholder="Ej.: Bony (2), Santi (1)"
-                  required
-                />
-              </div>
-
-              <div>
-                <label for="highlights-video-url-input">
-                  Enlace de vídeo desde Google Drive
-                </label>
-
-                <input
-                  id="highlights-video-url-input"
-                  type="url"
-                  placeholder="https://drive.google.com/file/d/..."
-                />
-              </div>
-            </div>
+        <form id="highlights-form" class="highlights-form">
+          <!-- GOLEADORES: SOLO JUGADORES CONVOCADOS -->
+          <div class="highlights-scorers-field">
+            <label for="highlights-scorers-selector">
+              Goleadores del partido
+            </label>
 
             <p class="help-text">
-              Sube primero el vídeo a Google Drive. En Compartir selecciona
-              “Cualquier persona con el enlace” y el permiso “Lector”.
-              Después pega aquí el enlace del archivo.
+              Indica cuántos goles ha marcado cada jugador convocado.
             </p>
 
-            <button type="submit" class="btn btn-primary">
-              Publicar jugadas destacadas
+            <div
+              id="highlights-scorers-selector"
+              class="highlights-scorers-selector"
+              aria-live="polite"
+            >
+              <p class="empty-state">
+                Primero publica una convocatoria para mostrar los jugadores convocados.
+              </p>
+            </div>
+          </div>
+
+          <!-- DATOS DEL PARTIDO -->
+          <div class="grid-form highlights-match-data">
+            <div>
+              <label for="highlights-date-input">
+                Fecha del partido
+              </label>
+
+              <input
+                id="highlights-date-input"
+                type="date"
+                required
+              />
+            </div>
+
+            <div>
+              <label for="highlights-location-input">
+                Ubicación
+              </label>
+
+              <input
+                id="highlights-location-input"
+                type="text"
+                placeholder="Ej.: Polideportivo La Luz"
+                required
+              />
+            </div>
+
+            <div>
+              <label for="highlights-video-url-input">
+                Enlace de vídeo desde Google Drive
+              </label>
+
+              <input
+                id="highlights-video-url-input"
+                type="url"
+                placeholder="https://drive.google.com/file/d/..."
+              />
+            </div>
+          </div>
+
+          <p class="help-text highlights-video-help">
+            Sube primero el vídeo a Google Drive. En <strong>Compartir</strong>,
+            selecciona “Cualquier persona con el enlace” y el permiso “Lector”.
+            Después pega aquí el enlace del archivo.
+          </p>
+
+          <div class="highlights-editor-actions">
+            <button
+              id="cancel-highlights-edit-btn"
+              type="button"
+              class="btn btn-outline-dark"
+            >
+              Cancelar
             </button>
 
-            <p id="highlights-message" class="form-message"></p>
-          </form>
-        </section>
-      </section>
+            <button
+              id="save-highlights-btn"
+              type="submit"
+              class="btn btn-primary"
+            >
+              Publicar jugadas destacadas
+            </button>
+          </div>
 
-      <!-- =================================================
-           ESTADÍSTICAS
-           ================================================= -->
+          <p id="highlights-message" class="form-message"></p>
+        </form>
+      </div>
+    </section>
+    <!-- FIN DEL PANEL DE ENTRENADOR -->
+
+    </section>
+    <!-- FIN DE LA SECCIÓN PRINCIPAL: JUGADAS DESTACADAS -->
+
+<!-- =================================================
+     ESTADÍSTICAS
+     ================================================= -->
       <section id="estadisticas" class="section-panel hidden">
         <div class="section-heading">
           <div>

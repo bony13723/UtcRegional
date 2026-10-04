@@ -269,15 +269,43 @@ const highlightsVideoContainer = document.getElementById(
 );
 
 const highlightsForm = document.getElementById("highlights-form");
+
+const editHighlightsBtn = document.getElementById(
+  "edit-highlights-btn"
+);
+
+const highlightsEditor = document.getElementById(
+  "highlights-editor"
+);
+
+const highlightsEditorTitle = document.getElementById(
+  "highlights-editor-title"
+);
+
+const cancelHighlightsEditBtn = document.getElementById(
+  "cancel-highlights-edit-btn"
+);
+
+const saveHighlightsBtn = document.getElementById(
+  "save-highlights-btn"
+);
+
 const highlightsDateInput = document.getElementById(
   "highlights-date-input"
 );
 const highlightsLocationInput = document.getElementById(
   "highlights-location-input"
 );
-const highlightsScorersInput = document.getElementById(
-  "highlights-scorers-input"
+
+//========================================================
+//GOLEADORES 
+//========================================================
+const highlightsScorersSelector = document.getElementById(
+  "highlights-scorers-selector"
 );
+
+
+
 const highlightsVideoUrlInput = document.getElementById(
   "highlights-video-url-input"
 );
@@ -844,6 +872,9 @@ function loadPlayers() {
         renderStats();
         renderMyFines(fines);
         renderConvocationPlayersSelector();
+        renderHighlightsScorersSelector(
+        currentHighlights?.goleadores || []
+        );
       },
       (error) => {
         console.error(error);
@@ -1839,7 +1870,9 @@ if (convocationForm) {
 // HISTORIAL DE CONVOCATORIAS Y PARTIDOS
 // =====================================================
 function getMatchStatus(match) {
-  return match.videoUrl || match.goleadores
+  const scorers = normaliseScorers(match.goleadores);
+
+  return match.videoUrl || scorers.length > 0 || match.estado === "finalizado"
     ? "Finalizado"
     : "Convocatoria";
 }
@@ -1948,45 +1981,59 @@ function renderSelectedMatch(match) {
       }`;
   }
 
-  highlightsDate.textContent = formatMatchDate(match.fecha);
+  if (highlightsDate) {
+    highlightsDate.textContent = formatMatchDate(match.fecha);
+  }
 
-  highlightsLocation.textContent =
-    match.ubicacion || "Pendiente de confirmar";
+  if (highlightsLocation) {
+    highlightsLocation.textContent =
+      match.ubicacion || "Pendiente de confirmar";
+  }
 
-  highlightsScorers.textContent =
-    match.goleadores || "Sin registrar";
+  if (highlightsScorers) {
+    highlightsScorers.innerHTML = formatScorersHTML(
+      match.goleadores
+    );
+  }
 
   const previewUrl = getDrivePreviewUrl(match.videoUrl);
 
-  if (previewUrl) {
-    highlightsVideoContainer.innerHTML = `
-      <iframe
-        class="highlights-video"
-        src="${escapeHTML(previewUrl)}"
-        title="Jugadas destacadas del partido"
-        allow="autoplay"
-        allowfullscreen
-      ></iframe>
-    `;
-  } else {
-    highlightsVideoContainer.innerHTML = `
-      <p class="empty-state">
-        Todavía no se ha publicado un vídeo de jugadas destacadas para este partido.
-      </p>
-    `;
+  if (highlightsVideoContainer) {
+    if (previewUrl) {
+      highlightsVideoContainer.innerHTML = `
+        <iframe
+          class="highlights-video"
+          src="${escapeHTML(previewUrl)}"
+          title="Jugadas destacadas del partido"
+          allow="autoplay"
+          allowfullscreen
+        ></iframe>
+      `;
+    } else {
+      highlightsVideoContainer.innerHTML = `
+        <p class="empty-state">
+          Todavía no se ha publicado un vídeo de jugadas destacadas para este partido.
+        </p>
+      `;
+    }
   }
 
   if (isAdmin) {
-    highlightsDateInput.value = match.fecha || "";
+    if (highlightsDateInput) {
+      highlightsDateInput.value = match.fecha || "";
+    }
 
-    highlightsLocationInput.value =
-      match.ubicacion || "";
+    if (highlightsLocationInput) {
+      highlightsLocationInput.value =
+        match.ubicacion || "";
+    }
 
-    highlightsScorersInput.value =
-      match.goleadores || "";
+    if (highlightsVideoUrlInput) {
+      highlightsVideoUrlInput.value =
+        match.videoUrl || "";
+    }
 
-    highlightsVideoUrlInput.value =
-      match.videoUrl || "";
+    renderHighlightsScorersSelector(match.goleadores || []);
   }
 }
 
@@ -2009,46 +2056,300 @@ if (matchHistoryList) {
   });
 }
 
-
 // =====================================================
 // 13. JUGADAS DESTACADAS
 // =====================================================
-function renderHighlights(highlights) {
-  currentHighlights = highlights;
+function normaliseScorers(scorers) {
+  if (!scorers) return [];
 
-  if (!highlights) {
-    highlightsDate.textContent = "Pendiente de confirmar";
-    highlightsLocation.textContent = "Pendiente de confirmar";
-    highlightsScorers.textContent = "Sin registrar";
+  /*
+    Formato nuevo:
+    [
+      { id: "idJugador", nombre: "Bony", goles: 2 },
+      { id: "idJugador2", nombre: "Santi", goles: 1 }
+    ]
+  */
+  if (Array.isArray(scorers)) {
+    return scorers
+      .map((scorer) => ({
+        id: scorer.id || "",
+        nombre: String(scorer.nombre || "").trim(),
+        goles: Number(scorer.goles || 0)
+      }))
+      .filter(
+        (scorer) =>
+          scorer.nombre &&
+          Number.isFinite(scorer.goles) &&
+          scorer.goles > 0
+      );
+  }
 
-    highlightsVideoContainer.innerHTML = `
+  /*
+    Compatibilidad con partidos antiguos guardados como texto:
+    "Bony (2), Santi (1)"
+  */
+  return String(scorers)
+    .split(",")
+    .map((item) => {
+      const result = item.trim().match(/^(.*?)\s*\((\d+)\)$/);
+
+      if (result) {
+        return {
+          id: "",
+          nombre: result[1].trim(),
+          goles: Number(result[2])
+        };
+      }
+
+      return {
+        id: "",
+        nombre: item.trim(),
+        goles: 1
+      };
+    })
+    .filter(
+      (scorer) =>
+        scorer.nombre &&
+        Number.isFinite(scorer.goles) &&
+        scorer.goles > 0
+    );
+}
+
+function formatScorersHTML(scorers) {
+  const scorerList = normaliseScorers(scorers);
+
+  if (!scorerList.length) {
+    return "Sin registrar";
+  }
+
+  return `
+    <ul class="scorers-list">
+      ${scorerList
+        .map((scorer) => {
+          const goals = Number(scorer.goles || 0);
+
+          return `
+            <li class="scorer-line">
+              ${escapeHTML(scorer.nombre).toUpperCase()}: ${goals}
+              ${"⚽".repeat(goals)}
+            </li>
+          `;
+        })
+        .join("")}
+    </ul>
+  `;
+}
+
+
+
+let selectedScorers = [];
+
+
+
+function renderHighlightsScorersSelector(existingScorers = []) {
+  if (!highlightsScorersSelector) return;
+
+  const scorerList = normaliseScorers(existingScorers);
+
+  const goalsByPlayerId = new Map(
+    scorerList
+      .filter((scorer) => scorer.id)
+      .map((scorer) => [
+        scorer.id,
+        Number(scorer.goles || 0)
+      ])
+  );
+
+  const goalsByPlayerName = new Map(
+    scorerList.map((scorer) => [
+      normaliseName(scorer.nombre),
+      Number(scorer.goles || 0)
+    ])
+  );
+
+  /*
+    Prioridad:
+    1. Partido abierto desde el historial.
+    2. Convocatoria actual.
+    3. Lista vacía si todavía no existe convocatoria.
+  */
+  const selectedMatch = selectedMatchId
+    ? matches.find((match) => match.id === selectedMatchId)
+    : null;
+
+  const calledPlayers =
+    selectedMatch?.convocados ||
+    currentConvocation?.convocados ||
+    [];
+
+  if (!calledPlayers.length) {
+    highlightsScorersSelector.innerHTML = `
       <p class="empty-state">
-        Todavía no se ha publicado un vídeo de jugadas destacadas.
+        Primero publica una convocatoria para mostrar los jugadores convocados.
       </p>
     `;
-
     return;
   }
 
-  highlightsDate.textContent = formatMatchDate(highlights.fecha);
-  highlightsLocation.textContent =
-    highlights.ubicacion || "Pendiente de confirmar";
-  highlightsScorers.textContent =
-    highlights.goleadores || "Sin registrar";
+  const goalOptions = Array.from(
+    { length: 11 },
+    (_, goals) => {
+      const label =
+        goals === 0
+          ? "0 goles"
+          : goals === 1
+          ? "1 gol"
+          : `${goals} goles`;
 
-  const previewUrl = getDrivePreviewUrl(highlights.videoUrl);
+      return {
+        goals,
+        label
+      };
+    }
+  );
 
-  if (previewUrl) {
-    highlightsVideoContainer.innerHTML = `
-      <iframe
-        class="highlights-video"
-        src="${escapeHTML(previewUrl)}"
-        title="Jugadas destacadas del partido"
-        allow="autoplay"
-        allowfullscreen
-      ></iframe>
-    `;
+  highlightsScorersSelector.innerHTML = calledPlayers
+    .map((player) => {
+      const goals =
+        goalsByPlayerId.get(player.id) ??
+        goalsByPlayerName.get(normaliseName(player.nombre)) ??
+        0;
+
+      return `
+        <div class="scorer-selector-row">
+          <span class="scorer-player-name">
+            ${escapeHTML(player.nombre)} · #${escapeHTML(player.dorsal)}
+          </span>
+
+          <select
+            class="scorer-goals-select"
+            data-player-id="${escapeHTML(player.id)}"
+            data-player-name="${escapeHTML(player.nombre)}"
+          >
+            ${goalOptions
+              .map(
+                (option) => `
+                  <option
+                    value="${option.goals}"
+                    ${
+                      Number(goals) === option.goals
+                        ? "selected"
+                        : ""
+                    }
+                  >
+                    ${option.label}
+                  </option>
+                `
+              )
+              .join("")}
+          </select>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function getSelectedScorers() {
+  if (!highlightsScorersSelector) return [];
+
+  return [
+    ...highlightsScorersSelector.querySelectorAll(
+      ".scorer-goals-select"
+    )
+  ]
+    .map((select) => ({
+      id: select.dataset.playerId || "",
+      nombre: select.dataset.playerName || "",
+      goles: Number(select.value)
+    }))
+    .filter(
+      (scorer) =>
+        scorer.nombre &&
+        Number.isFinite(scorer.goles) &&
+        scorer.goles > 0
+    );
+}
+
+function openHighlightsEditor() {
+  if (!isAdmin || !highlightsEditor) return;
+
+  highlightsEditor.classList.remove("hidden");
+
+  if (editHighlightsBtn) {
+    editHighlightsBtn.classList.add("hidden");
+  }
+
+  if (currentHighlights) {
+    if (highlightsEditorTitle) {
+      highlightsEditorTitle.textContent = "Editar jugadas destacadas";
+    }
+
+    if (saveHighlightsBtn) {
+      saveHighlightsBtn.textContent = "Guardar cambios";
+    }
   } else {
+    if (highlightsEditorTitle) {
+      highlightsEditorTitle.textContent = "Publicar jugadas destacadas";
+    }
+
+    if (saveHighlightsBtn) {
+      saveHighlightsBtn.textContent = "Publicar jugadas destacadas";
+    }
+  }
+}
+
+function closeHighlightsEditor() {
+  if (highlightsEditor) {
+    highlightsEditor.classList.add("hidden");
+  }
+
+  if (editHighlightsBtn && isAdmin && currentHighlights) {
+    editHighlightsBtn.classList.remove("hidden");
+  }
+}
+
+if (editHighlightsBtn) {
+  editHighlightsBtn.addEventListener("click", () => {
+    openHighlightsEditor();
+  });
+}
+
+if (cancelHighlightsEditBtn) {
+  cancelHighlightsEditBtn.addEventListener("click", () => {
+    closeHighlightsEditor();
+  });
+}
+
+function renderHighlights(highlights) {
+  currentHighlights = highlights;
+
+  if (isAdmin && highlights) {
+  if (highlightsEditorTitle) {
+    highlightsEditorTitle.textContent =
+      "Editar jugadas destacadas";
+  }
+
+  if (saveHighlightsBtn) {
+    saveHighlightsBtn.textContent = "Guardar cambios";
+  }
+
+  closeHighlightsEditor();
+}
+
+  if (!highlights) {
+  if (highlightsDate) {
+    highlightsDate.textContent = "Pendiente de confirmar";
+  }
+
+  if (highlightsLocation) {
+    highlightsLocation.textContent = "Pendiente de confirmar";
+  }
+
+  if (highlightsScorers) {
+    highlightsScorers.innerHTML = "Sin registrar";
+  }
+
+  if (highlightsVideoContainer) {
     highlightsVideoContainer.innerHTML = `
       <p class="empty-state">
         Todavía no se ha publicado un vídeo de jugadas destacadas.
@@ -2057,30 +2358,108 @@ function renderHighlights(highlights) {
   }
 
   if (isAdmin) {
-    highlightsDateInput.value = highlights.fecha || "";
-    highlightsLocationInput.value = highlights.ubicacion || "";
-    highlightsScorersInput.value = highlights.goleadores || "";
-    highlightsVideoUrlInput.value = highlights.videoUrl || "";
+    if (highlightsDateInput) {
+      highlightsDateInput.value = "";
+    }
+
+    if (highlightsLocationInput) {
+      highlightsLocationInput.value = "";
+    }
+
+    if (highlightsVideoUrlInput) {
+      highlightsVideoUrlInput.value = "";
+    }
+
+    renderHighlightsScorersSelector([]);
+
+    if (editHighlightsBtn) {
+      editHighlightsBtn.classList.add("hidden");
+    }
+
+    if (highlightsEditorTitle) {
+      highlightsEditorTitle.textContent =
+        "Publicar jugadas destacadas";
+    }
+
+    if (saveHighlightsBtn) {
+      saveHighlightsBtn.textContent =
+        "Publicar jugadas destacadas";
+    }
+
+    openHighlightsEditor();
+  }
+
+  return;
+}
+
+  if (highlightsDate) {
+    highlightsDate.textContent =
+      formatMatchDate(highlights.fecha);
+  }
+
+  if (highlightsLocation) {
+    highlightsLocation.textContent =
+      highlights.ubicacion || "Pendiente de confirmar";
+  }
+
+  if (highlightsScorers) {
+    highlightsScorers.innerHTML = formatScorersHTML(
+      highlights.goleadores
+    );
+  }
+
+  const previewUrl = getDrivePreviewUrl(highlights.videoUrl);
+
+  if (highlightsVideoContainer) {
+    if (previewUrl) {
+      highlightsVideoContainer.innerHTML = `
+        <iframe
+          class="highlights-video"
+          src="${escapeHTML(previewUrl)}"
+          title="Jugadas destacadas del partido"
+          allow="autoplay"
+          allowfullscreen
+        ></iframe>
+      `;
+    } else {
+      highlightsVideoContainer.innerHTML = `
+        <p class="empty-state">
+          Todavía no se ha publicado un vídeo de jugadas destacadas.
+        </p>
+      `;
+    }
+  }
+
+  if (isAdmin) {
+    if (highlightsDateInput) {
+      highlightsDateInput.value = highlights.fecha || "";
+    }
+
+    if (highlightsLocationInput) {
+      highlightsLocationInput.value =
+        highlights.ubicacion || "";
+    }
+
+    if (highlightsVideoUrlInput) {
+      highlightsVideoUrlInput.value =
+        highlights.videoUrl || "";
+    }
+
+    renderHighlightsScorersSelector(
+      highlights.goleadores || []
+    );
   }
 }
 
 function loadHighlights() {
-  /*
-    Este listener mantiene la información del último vídeo
-    publicado para la sección actual de Jugadas destacadas.
-  */
   highlightsUnsubscribe = db
     .collection("jugadasDestacadas")
     .doc("actual")
     .onSnapshot(
       (doc) => {
-        console.log(
-          "Jugadas destacadas actuales recibidas:",
-          doc.exists,
-          doc.data()
+        renderHighlights(
+          doc.exists ? doc.data() : null
         );
-
-        renderHighlights(doc.exists ? doc.data() : null);
       },
       (error) => {
         console.error(
@@ -2107,13 +2486,17 @@ if (highlightsForm) {
 
     const fecha = highlightsDateInput.value;
     const ubicacion = highlightsLocationInput.value.trim();
-    const goleadores = highlightsScorersInput.value.trim();
+    const goleadores = getSelectedScorers();
     const videoUrl = highlightsVideoUrlInput.value.trim();
 
-    if (!fecha || !ubicacion || !goleadores) {
+    /*
+      Los goleadores no son obligatorios:
+      el partido puede haber terminado 0-0.
+    */
+    if (!fecha || !ubicacion) {
       showMessage(
         highlightsMessage,
-        "Completa fecha, ubicación y goleadores.",
+        "Completa la fecha y la ubicación del partido.",
         "error"
       );
       return;
@@ -2128,18 +2511,6 @@ if (highlightsForm) {
       return;
     }
 
-    /*
-      Prioridad para decidir a qué partido se asigna el vídeo:
-
-      1. selectedMatchId:
-         El entrenador abrió un partido desde el historial.
-
-      2. currentConvocation.partidoId:
-         Es el partido asociado a la convocatoria actual.
-
-      3. Búsqueda por fecha, ubicación y hora:
-         Evita perder el vínculo si se refresca la web.
-    */
     let targetMatchId =
       selectedMatchId ||
       currentConvocation?.partidoId ||
@@ -2177,19 +2548,11 @@ if (highlightsForm) {
         actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
       };
 
-      /*
-        Guarda vídeo, goleadores y datos finales en el documento
-        del partido seleccionado. La convocatoria queda intacta.
-      */
       await db.collection("partidos").doc(targetMatchId).set(
         highlightsData,
         { merge: true }
       );
 
-      /*
-        Mantiene el documento "actual" para la pantalla de
-        Jugadas destacadas sin tener que seleccionar un partido.
-      */
       await db.collection("jugadasDestacadas").doc("actual").set(
         {
           ...highlightsData,
@@ -2198,22 +2561,18 @@ if (highlightsForm) {
         { merge: true }
       );
 
-      /*
-        Deja seleccionado el partido para que, si el entrenador
-        edita de nuevo las jugadas, se actualice el mismo documento.
-      */
       selectedMatchId = targetMatchId;
 
       showMessage(
         highlightsMessage,
-        "Jugadas destacadas guardadas en el historial del partido."
+        "Jugadas destacadas guardadas correctamente."
       );
     } catch (error) {
       console.error(error);
 
       showMessage(
         highlightsMessage,
-        "No se han podido publicar las jugadas destacadas.",
+        "No se han podido guardar las jugadas destacadas.",
         "error"
       );
     }
@@ -2222,15 +2581,23 @@ if (highlightsForm) {
 
 if (goToHighlightsBtn) {
   goToHighlightsBtn.addEventListener("click", () => {
-    /*
-      Si no se seleccionó un partido histórico, el formulario
-      se referirá al partido de convocatoria actual.
-    */
     selectedMatchId =
       selectedMatchId ||
       currentConvocation?.partidoId ||
       null;
 
+    /*
+      Si se ha publicado una convocatoria actual, muestra
+      sus datos en la pantalla de jugadas destacadas.
+    */
+    const selectedMatch = matches.find(
+      (match) => match.id === selectedMatchId
+    );
+
+    if (selectedMatch) {
+      renderSelectedMatch(selectedMatch);
+    }
+
     showSection("jugadas-destacadas");
   });
 }
@@ -2242,17 +2609,6 @@ if (backToConvocationBtn) {
 }
 
 
-if (goToHighlightsBtn) {
-  goToHighlightsBtn.addEventListener("click", () => {
-    showSection("jugadas-destacadas");
-  });
-}
-
-if (backToConvocationBtn) {
-  backToConvocationBtn.addEventListener("click", () => {
-    showSection("convocatoria");
-  });
-}
 
 // =====================================================
 // 14. ESTADÍSTICAS
