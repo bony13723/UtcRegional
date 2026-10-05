@@ -19,6 +19,7 @@
       <h1>Gestión del equipo</h1>
 
       <!-- INICIAR SESIÓN -->
+
       <div id="login-view">
         <p class="subtitle">
           Accede con tu cuenta de entrenador o jugador.
@@ -75,6 +76,7 @@
       </div>
 
       <!-- REGISTRO -->
+
       <div id="register-view" class="hidden">
         <p class="subtitle">
           Regístrate para acceder a la aplicación del equipo.
@@ -142,6 +144,7 @@
       </div>
 
             <!-- RESTABLECER CONTRASEÑA -->
+
       <div id="reset-password-view" class="hidden">
         <p class="subtitle">
           Escribe el correo con el que te registraste. Te enviaremos
@@ -187,6 +190,7 @@
   <div id="app-section" class="app hidden">
 
     <!-- CABECERA -->
+
     <header class="topbar">
       <div class="brand">
         <p class="eyebrow">Regional UTC</p>
@@ -203,6 +207,7 @@
     </header>
 
     <!-- MENÚ -->
+
     <nav class="main-nav" aria-label="Menú principal">
       <button
         class="nav-btn active"
@@ -254,6 +259,7 @@
     </nav>
 
     <!-- CONTENIDO -->
+
     <main class="content">
 
 <!-- =================================================
@@ -370,18 +376,34 @@
           </span>
         </div>
 
-        <!-- Solo entrenadores -->
-        <div id="player-form-container" class="admin-only">
+        <!-- AÑADIR JUGADOR: SOLO ENTRENADORES -->
+
+      <section id="player-form-container" class="admin-only">
+        <button
+          id="open-add-player-btn"
+          class="btn btn-primary"
+          type="button"
+        >
+          Añadir jugador
+        </button>
+
+        <div id="player-editor" class="hidden">
           <h3>Añadir jugador</h3>
 
           <form id="add-player-form" class="grid-form">
             <div>
               <label for="player-name">Nombre completo</label>
-              <input id="player-name" type="text" required />
+
+              <input
+                id="player-name"
+                type="text"
+                required
+              />
             </div>
 
             <div>
               <label for="player-position">Posición</label>
+
               <select id="player-position" required>
                 <option value="Portero">Portero</option>
                 <option value="Cierre">Cierre</option>
@@ -392,6 +414,7 @@
 
             <div>
               <label for="player-number">Dorsal</label>
+
               <input
                 id="player-number"
                 type="number"
@@ -403,6 +426,7 @@
 
             <div>
               <label for="player-leg">Pierna dominante</label>
+
               <select id="player-leg" required>
                 <option value="Derecha">Derecha</option>
                 <option value="Izquierda">Izquierda</option>
@@ -410,31 +434,55 @@
               </select>
             </div>
 
-            <div class="form-action">
-              <button class="btn btn-primary" type="submit">
-                Añadir jugador
+            <div class="form-action player-editor-actions">
+              <button
+                id="cancel-add-player-btn"
+                class="btn btn-outline-dark"
+                type="button"
+              >
+                Cancelar
               </button>
+
+              <button
+              class="btn btn-primary save-player-btn"
+              type="submit">
+
+              Guardar jugador
+            </button>
+
             </div>
           </form>
 
           <p id="player-message" class="form-message"></p>
         </div>
+      </section>
+       <div class="table-wrapper">
+        <table id="players-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Posición</th>
+              <th>Dorsal</th>
+              <th>Pierna dominante</th>
+              <th id="players-actions-header" class="hidden">
+                Acciones
+              </th>
+            </tr>
+          </thead>
 
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Posición</th>
-                <th>Dorsal</th>
-                <th>Pierna dominante</th>
-                <th class="admin-column">Acciones</th>
-              </tr>
-            </thead>
+          <tbody id="players-table-body"></tbody>
+        </table>
+      </div>
 
-            <tbody id="players-table-body"></tbody>
-          </table>
-        </div>
+      <div class="player-table-actions admin-only">
+        <button
+          id="edit-players-btn"
+          type="button"
+          class="btn btn-primary"
+        >
+          Editar plantilla
+        </button>
+      </div>
       </section>
 
       <!-- =================================================

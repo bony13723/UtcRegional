@@ -1470,3 +1470,56 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 }
+
+#player-form-container {
+  margin-bottom: 1.25rem;
+}
+
+#player-editor {
+  margin-top: 1rem;
+}
+
+.player-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+@media (max-width: 560px) {
+  .player-editor-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .player-editor-actions .btn {
+    width: 100%;
+  }
+}
+
+.save-player-btn {
+  min-width: 150px;
+  white-space: nowrap;
+}
+
+.player-table-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+#edit-players-btn {
+  min-width: 160px;
+  white-space: nowrap;
+}
+
+.btn-success {
+  border-color: #1f8b4c;
+  background: #1f8b4c;
+  color: #ffffff;
+}
+
+.btn-success:hover {
+  border-color: #176b3a;
+  background: #176b3a;
+  color: #ffffff;
+}

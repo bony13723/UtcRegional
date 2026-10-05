@@ -26,6 +26,7 @@ let currentUser = null;
 let currentUserRole = "jugador";
 let currentUserName = "Usuario";
 let isAdmin = false;
+let isEditingPlayers = false;
 
 let players = [];
 let coaches = [];
@@ -185,6 +186,14 @@ const backToLoginBtn = document.getElementById(
 const userInfo = document.getElementById("user-info");
 
 const playersTableBody = document.getElementById("players-table-body");
+const editPlayersBtn = document.getElementById(
+  "edit-players-btn"
+);
+
+const playersActionsHeader = document.getElementById(
+  "players-actions-header"
+);
+
 const finesTableBody = document.getElementById("fines-table-body");
 
 const statsTableBody = document.getElementById("stats-table-body");
@@ -202,6 +211,20 @@ const playersCount = document.getElementById("players-count");
 const finesTotal = document.getElementById("fines-total");
 
 const playerMessage = document.getElementById("player-message");
+
+const openAddPlayerBtn = document.getElementById(
+  "open-add-player-btn"
+);
+
+const playerEditor = document.getElementById(
+  "player-editor"
+);
+
+const cancelAddPlayerBtn = document.getElementById(
+  "cancel-add-player-btn"
+);
+
+
 const fineMessage = document.getElementById("fine-message");
 const statMessage = document.getElementById("stat-message");
 const trainingMessage = document.getElementById("training-message");
@@ -519,10 +542,10 @@ auth.onAuthStateChanged(async (user) => {
     isAdmin = currentUserRole === "entrenador";
 
     currentUserName =
-  profileData.nombre ||
-  user.displayName ||
-  user.email ||
-  "Usuario";
+    profileData.nombre ||
+    user.displayName ||
+    user.email ||
+    "Usuario";
 
     loginSection.classList.add("hidden");
     appSection.classList.remove("hidden");
@@ -821,6 +844,45 @@ function showSection(sectionId) {
 // =====================================================
 // 10. PLANTILLA
 // =====================================================
+
+function openPlayerEditor() {
+  if (!isAdmin || !playerEditor) return;
+
+  playerEditor.classList.remove("hidden");
+
+  if (openAddPlayerBtn) {
+    openAddPlayerBtn.classList.add("hidden");
+  }
+}
+
+function closePlayerEditor() {
+  if (playerEditor) {
+    playerEditor.classList.add("hidden");
+  }
+
+  if (openAddPlayerBtn && isAdmin) {
+    openAddPlayerBtn.classList.remove("hidden");
+  }
+}
+
+if (openAddPlayerBtn) {
+  openAddPlayerBtn.addEventListener("click", () => {
+    openPlayerEditor();
+  });
+}
+
+if (cancelAddPlayerBtn) {
+  cancelAddPlayerBtn.addEventListener("click", () => {
+    const form = document.getElementById("add-player-form");
+
+    if (form) {
+      form.reset();
+    }
+
+    closePlayerEditor();
+  });
+}
+
 document
   .getElementById("add-player-form")
   .addEventListener("submit", async (event) => {
@@ -858,7 +920,13 @@ document
       });
 
       event.target.reset();
-      showMessage(playerMessage, "Jugador añadido correctamente.");
+
+      closePlayerEditor();
+
+      showMessage(
+        playerMessage,
+        "Jugador añadido correctamente."
+        );
     } catch (error) {
       console.error(error);
       showMessage(
@@ -904,15 +972,59 @@ function loadPlayers() {
     );
 }
 
+function getPositionOrder(position) {
+  const positionOrder = {
+    Portero: 1,
+    Cierre: 2,
+    Ala: 3,
+    "Pívot": 4
+  };
+
+  return positionOrder[position] || 99;
+}
+
+function getSortedPlayersByPosition() {
+  return [...players].sort((first, second) => {
+    const positionDifference =
+      getPositionOrder(first.posicion) -
+      getPositionOrder(second.posicion);
+
+    if (positionDifference !== 0) {
+      return positionDifference;
+    }
+
+    const dorsalDifference =
+      Number(first.dorsal || 0) - Number(second.dorsal || 0);
+
+    if (dorsalDifference !== 0) {
+      return dorsalDifference;
+    }
+
+    return String(first.nombre || "").localeCompare(
+      String(second.nombre || ""),
+      "es"
+    );
+  });
+}
+
 function renderPlayers() {
   playersCount.textContent = `${players.length} ${
     players.length === 1 ? "jugador" : "jugadores"
   }`;
 
+  const showActions = isAdmin && isEditingPlayers;
+
+  if (playersActionsHeader) {
+    playersActionsHeader.classList.toggle(
+      "hidden",
+      !showActions
+    );
+  }
+
   if (!players.length) {
     playersTableBody.innerHTML = `
       <tr>
-        <td colspan="${isAdmin ? 5 : 4}" class="empty-state">
+        <td colspan="${showActions ? 5 : 4}" class="empty-state">
           Todavía no hay jugadores registrados.
         </td>
       </tr>
@@ -920,7 +1032,9 @@ function renderPlayers() {
     return;
   }
 
-  playersTableBody.innerHTML = players
+  const sortedPlayers = getSortedPlayersByPosition();
+
+  playersTableBody.innerHTML = sortedPlayers
     .map(
       (player) => `
         <tr>
@@ -930,19 +1044,19 @@ function renderPlayers() {
           <td>${escapeHTML(player.piernaDominante)}</td>
 
           ${
-            isAdmin
+            showActions
               ? `
-              <td class="action-cell">
-                <button
-                  class="small-btn btn-danger"
-                  data-action="delete-player"
-                  data-id="${player.id}"
-                  data-name="${escapeHTML(player.nombre)}"
-                >
-                  Eliminar
-                </button>
-              </td>
-            `
+                <td class="action-cell">
+                  <button
+                    class="small-btn btn-danger"
+                    data-action="delete-player"
+                    data-id="${player.id}"
+                    data-name="${escapeHTML(player.nombre)}"
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              `
               : ""
           }
         </tr>
@@ -950,6 +1064,31 @@ function renderPlayers() {
     )
     .join("");
 }
+
+if (editPlayersBtn) {
+  editPlayersBtn.addEventListener("click", () => {
+    if (!isAdmin) return;
+
+    isEditingPlayers = !isEditingPlayers;
+
+    editPlayersBtn.textContent = isEditingPlayers
+      ? "Terminar edición"
+      : "Editar plantilla";
+
+    editPlayersBtn.classList.toggle(
+      "btn-primary",
+      !isEditingPlayers
+    );
+
+    editPlayersBtn.classList.toggle(
+      "btn-success",
+      isEditingPlayers
+    );
+
+    renderPlayers();
+  });
+}
+
 
 playersTableBody.addEventListener("click", async (event) => {
   const button = event.target.closest('[data-action="delete-player"]');
