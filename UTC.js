@@ -186,7 +186,16 @@ const userInfo = document.getElementById("user-info");
 
 const playersTableBody = document.getElementById("players-table-body");
 const finesTableBody = document.getElementById("fines-table-body");
+
 const statsTableBody = document.getElementById("stats-table-body");
+const topScorersList = document.getElementById(
+  "top-scorers-list"
+);
+
+const topAssistsList = document.getElementById(
+  "top-assists-list"
+);
+
 const attendanceContainer = document.getElementById("attendance-container");
 
 const playersCount = document.getElementById("players-count");
@@ -2763,7 +2772,95 @@ document
     }
   });
 
+function getPlayerStatValue(player, statName) {
+  return Number(player.estadisticas?.[statName] || 0);
+}
+
+function renderStatsRanking(
+  container,
+  statName,
+  emptyMessage,
+  singularLabel,
+  pluralLabel
+) {
+  if (!container) return;
+
+  const ranking = [...players]
+    .map((player) => ({
+      id: player.id,
+      nombre: player.nombre,
+      dorsal: player.dorsal,
+      valor: getPlayerStatValue(player, statName)
+    }))
+    .filter((player) => player.valor > 0)
+    .sort((first, second) => {
+      if (second.valor !== first.valor) {
+        return second.valor - first.valor;
+      }
+
+      return String(first.nombre).localeCompare(
+        String(second.nombre),
+        "es"
+      );
+    })
+    .slice(0, 5);
+
+  if (!ranking.length) {
+    container.innerHTML = `
+      <li class="empty-state">
+        ${emptyMessage}
+      </li>
+    `;
+    return;
+  }
+
+  container.innerHTML = ranking
+    .map((player, index) => {
+      const statLabel =
+        player.valor === 1 ? singularLabel : pluralLabel;
+
+      return `
+        <li class="stats-ranking-item">
+          <span class="stats-ranking-position">
+            ${index + 1}
+          </span>
+
+          <span class="stats-ranking-player">
+            ${escapeHTML(player.nombre)}
+            <small>#${escapeHTML(player.dorsal)}</small>
+          </span>
+
+          <strong class="stats-ranking-value">
+            ${player.valor} ${statLabel}
+          </strong>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+function renderStatsRankings() {
+  renderStatsRanking(
+    topScorersList,
+    "goles",
+    "Todavía no hay goles registrados.",
+    "gol",
+    "goles"
+  );
+
+  renderStatsRanking(
+    topAssistsList,
+    "asistencias",
+    "Todavía no hay asistencias registradas.",
+    "asistencia",
+    "asistencias"
+  );
+}
+
 function renderStats() {
+  
+  renderStatsRankings();
+  
   if (!players.length) {
     statsTableBody.innerHTML = `
       <tr>
@@ -2934,6 +3031,12 @@ async function renderTrainings(trainings) {
 
     attendanceContainer.innerHTML = trainingsWithAttendance
       .map((training) => {
+        const allPlayersRegistered =
+          players.length > 0 &&
+          players.every((player) => {
+            return training.attendanceMap[player.id]?.asistio !== undefined;
+          });
+
         const rows = players.length
           ? players
               .map((player) => {
@@ -2951,7 +3054,9 @@ async function renderTrainings(trainings) {
                   return `
                     <div class="attendance-row">
                       <strong>
-                        ${escapeHTML(player.nombre)} · #${escapeHTML(player.dorsal)}
+                        ${escapeHTML(player.nombre)} · #${escapeHTML(
+                          player.dorsal
+                        )}
                       </strong>
 
                       <span>${readableStatus}</span>
@@ -2963,45 +3068,56 @@ async function renderTrainings(trainings) {
                   `;
                 }
 
+                /*
+                  Para el entrenador siempre se generan selectores.
+                  Después de guardar se ocultan mediante la clase
+                  "attendance-locked", salvo que pulse Editar.
+                */
                 return `
                   <div class="attendance-row">
                     <strong>
-                      ${escapeHTML(player.nombre)} · #${escapeHTML(player.dorsal)}
+                      ${escapeHTML(player.nombre)} · #${escapeHTML(
+                        player.dorsal
+                      )}
                     </strong>
 
                     <select
                       class="attendance-select"
                       data-training-id="${training.id}"
                       data-player-id="${player.id}"
+                      data-player-name="${escapeHTML(player.nombre)}"
                     >
-                      <option value="" ${
-                        attended === undefined ? "selected" : ""
-                      }>
+                      <option
+                        value=""
+                        ${attended === undefined ? "selected" : ""}
+                      >
                         Sin registrar
                       </option>
 
-                      <option value="si" ${
-                        attended === true ? "selected" : ""
-                      }>
+                      <option
+                        value="si"
+                        ${attended === true ? "selected" : ""}
+                      >
                         Sí
                       </option>
 
-                      <option value="no" ${
-                        attended === false ? "selected" : ""
-                      }>
+                      <option
+                        value="no"
+                        ${attended === false ? "selected" : ""}
+                      >
                         No
                       </option>
                     </select>
 
-                    <button
-                      class="small-btn btn-primary"
-                      data-action="save-attendance"
-                      data-training-id="${training.id}"
-                      data-player-id="${player.id}"
-                      data-player-name="${escapeHTML(player.nombre)}"
-                    >
-                      Guardar
-                    </button>
+                    <span class="attendance-readonly-status">
+                      ${
+                        attended === true
+                          ? "Sí"
+                          : attended === false
+                          ? "No"
+                          : "Sin registrar"
+                      }
+                    </span>
                   </div>
                 `;
               })
@@ -3013,21 +3129,36 @@ async function renderTrainings(trainings) {
           `;
 
         return `
-          <article class="training-card">
+          <article
+            class="training-card ${
+              allPlayersRegistered ? "attendance-locked" : ""
+            }"
+            data-training-id="${training.id}"
+          >
             <div class="training-card-header">
               <h3>Entrenamiento: ${formatDate(training.fecha)}</h3>
 
               ${
                 isAdmin
                   ? `
-                  <button
-                    class="small-btn btn-danger"
-                    data-action="delete-training"
-                    data-training-id="${training.id}"
-                  >
-                    Eliminar fecha
-                  </button>
-                `
+                    <div class="training-card-actions">
+                      <button
+                        class="small-btn btn-primary edit-attendance-btn"
+                        data-action="edit-attendance"
+                        data-training-id="${training.id}"
+                      >
+                        Editar asistencia
+                      </button>
+
+                      <button
+                        class="small-btn btn-danger"
+                        data-action="delete-training"
+                        data-training-id="${training.id}"
+                      >
+                        Eliminar fecha
+                      </button>
+                    </div>
+                  `
                   : ""
               }
             </div>
@@ -3035,6 +3166,26 @@ async function renderTrainings(trainings) {
             <div class="attendance-list">
               ${rows}
             </div>
+
+            ${
+              isAdmin
+                ? `
+                  <div class="attendance-batch-actions">
+                    <button
+                      class="btn btn-primary"
+                      data-action="save-attendance-batch"
+                      data-training-id="${training.id}"
+                    >
+                      ${
+                        allPlayersRegistered
+                          ? "Guardar cambios"
+                          : "Guardar asistencia"
+                      }
+                    </button>
+                  </div>
+                `
+                : ""
+            }
           </article>
         `;
       })
@@ -3051,53 +3202,126 @@ async function renderTrainings(trainings) {
 }
 
 attendanceContainer.addEventListener("click", async (event) => {
-  const saveButton = event.target.closest(
-    '[data-action="save-attendance"]'
+  const saveBatchButton = event.target.closest(
+    '[data-action="save-attendance-batch"]'
+  );
+
+  const editButton = event.target.closest(
+    '[data-action="edit-attendance"]'
   );
 
   const deleteButton = event.target.closest(
     '[data-action="delete-training"]'
   );
 
-  if (saveButton && isAdmin) {
-    const trainingId = saveButton.dataset.trainingId;
-    const playerId = saveButton.dataset.playerId;
-    const playerName = saveButton.dataset.playerName;
+  /*
+    EDITAR ASISTENCIA:
+    hace visibles los selectores y el botón de guardar
+    solo para ese entrenamiento.
+  */
+  if (editButton && isAdmin) {
+    const trainingCard = editButton.closest(".training-card");
 
-    const selector = document.querySelector(
-      `.attendance-select[data-training-id="${trainingId}"][data-player-id="${playerId}"]`
+    if (!trainingCard) return;
+
+    trainingCard.classList.remove("attendance-locked");
+
+    const saveButton = trainingCard.querySelector(
+      '[data-action="save-attendance-batch"]'
     );
 
-    if (!selector || selector.value === "") {
-      alert("Selecciona Sí o No antes de guardar.");
+    if (saveButton) {
+      saveButton.textContent = "Guardar cambios";
+    }
+
+    return;
+  }
+
+  /*
+    GUARDAR TODA LA ASISTENCIA:
+    comprueba todos los selectores y guarda los registros
+    en una sola operación batch de Firestore.
+  */
+  if (saveBatchButton && isAdmin) {
+    const trainingId = saveBatchButton.dataset.trainingId;
+
+    const trainingCard = saveBatchButton.closest(".training-card");
+
+    if (!trainingCard) return;
+
+    const selectors = [
+      ...trainingCard.querySelectorAll(".attendance-select")
+    ];
+
+    if (!selectors.length) {
+      alert("No hay jugadores para registrar.");
       return;
     }
 
-    try {
-      await db
-        .collection("entrenamientos")
-        .doc(trainingId)
-        .collection("asistencias")
-        .doc(playerId)
-        .set({
-          jugadorId: playerId,
-          jugadorNombre: playerName,
-          asistio: selector.value === "si",
-          actualizadoPor: currentUser.uid,
-          actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
-        });
+    const missingAttendance = selectors.some(
+      (selector) => selector.value === ""
+    );
 
-      saveButton.textContent = "Guardado";
+    if (missingAttendance) {
+      alert(
+        "Selecciona Sí o No para todos los jugadores antes de guardar."
+      );
+      return;
+    }
+
+    saveBatchButton.disabled = true;
+    saveBatchButton.textContent = "Guardando...";
+
+    try {
+      const batch = db.batch();
+
+      selectors.forEach((selector) => {
+        const playerId = selector.dataset.playerId;
+        const playerName = selector.dataset.playerName;
+
+        const attendanceRef = db
+          .collection("entrenamientos")
+          .doc(trainingId)
+          .collection("asistencias")
+          .doc(playerId);
+
+        batch.set(
+          attendanceRef,
+          {
+            jugadorId: playerId,
+            jugadorNombre: playerName,
+            asistio: selector.value === "si",
+            actualizadoPor: currentUser.uid,
+            actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+          },
+          { merge: true }
+        );
+      });
+
+      await batch.commit();
+
+      trainingCard.classList.add("attendance-locked");
+
+      saveBatchButton.textContent = "Guardado";
 
       window.setTimeout(() => {
-        saveButton.textContent = "Guardar";
+        saveBatchButton.textContent = "Guardar cambios";
       }, 1500);
     } catch (error) {
       console.error(error);
+
+      saveBatchButton.disabled = false;
+      saveBatchButton.textContent = "Guardar cambios";
+
       alert("No se ha podido guardar la asistencia.");
     }
+
+    return;
   }
 
+  /*
+    ELIMINAR ENTRENAMIENTO Y SUS ASISTENCIAS.
+  */
   if (deleteButton && isAdmin) {
     const trainingId = deleteButton.dataset.trainingId;
 

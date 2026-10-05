@@ -1314,3 +1314,159 @@ tbody tr:last-child td {
     width: 100%;
   }
 }
+
+.training-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.attendance-batch-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+/*
+  Después de guardar se muestra el texto de cada estado
+  y se oculta el selector y el botón de guardar.
+*/
+.attendance-readonly-status {
+  display: none;
+  font-weight: 700;
+  color: #1f4b87;
+}
+
+.attendance-locked .attendance-select {
+  display: none;
+}
+
+.attendance-locked .attendance-readonly-status {
+  display: inline;
+}
+
+.attendance-locked .attendance-batch-actions {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  .training-card-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .training-card-actions {
+    width: 100%;
+  }
+
+  .training-card-actions .small-btn {
+    flex: 1;
+  }
+
+  .attendance-batch-actions .btn {
+    width: 100%;
+  }
+}
+
+.stats-rankings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0;
+}
+
+.stats-ranking-card {
+  padding: 1.1rem;
+  border: 1px solid #dbe3f0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 5px 16px rgba(19, 43, 77, 0.06);
+}
+
+.stats-ranking-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid #e8eef6;
+}
+
+.stats-ranking-header .eyebrow {
+  margin-bottom: 0.2rem;
+}
+
+.stats-ranking-header h3 {
+  margin: 0;
+}
+
+.stats-ranking-icon {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #eef4ff;
+  font-size: 1.25rem;
+}
+
+.stats-ranking-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stats-ranking-item {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.7rem;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.stats-ranking-position {
+  display: grid;
+  width: 1.7rem;
+  height: 1.7rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #1f4b87;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.stats-ranking-player {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-ranking-player small {
+  margin-left: 0.25rem;
+  color: #687b93;
+  font-weight: 600;
+}
+
+.stats-ranking-value {
+  color: #1f4b87;
+  white-space: nowrap;
+}
+
+.stats-ranking-list .empty-state {
+  padding: 0.75rem 0;
+  list-style: none;
+}
+
+@media (max-width: 720px) {
+  .stats-rankings {
+    grid-template-columns: 1fr;
+  }
+}
