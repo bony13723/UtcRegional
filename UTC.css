@@ -1523,3 +1523,153 @@ tbody tr:last-child td {
   background: #176b3a;
   color: #ffffff;
 }
+
+.fine-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+#fine-editor {
+  margin-top: 1rem;
+}
+
+.fine-people-field {
+  grid-column: 1 / -1;
+}
+
+.fine-people-selector {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.65rem;
+}
+
+.fine-person-checkbox {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #dbe3f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-weight: 600;
+}
+
+.fine-person-checkbox input[type="checkbox"] {
+  display: inline-block !important;
+  width: 14px !important;
+  height: 14px !important;
+  margin: 0 !important;
+  flex: 0 0 auto !important;
+  accent-color: #1f4b87;
+}
+
+.fine-person-checkbox label {
+  display: inline-block !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+}
+
+.fine-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.general-fines-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.fines-filter {
+  min-width: 240px;
+}
+
+.fines-filter label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+#fines-actions-header.hidden {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .fine-people-selector {
+    grid-template-columns: 1fr;
+  }
+
+  .general-fines-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fines-filter {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .fine-admin-actions,
+  .fine-editor-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .fine-admin-actions .btn,
+  .fine-editor-actions .btn {
+    width: 100%;
+  }
+}
+
+.past-convocations-container {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.past-convocation-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #dbe3f0;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.past-convocation-info strong {
+  display: block;
+}
+
+.past-convocation-info span {
+  font-size: 0.9rem;
+  color: #5b6b7f;
+}
+
+.match-detail-card {
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid #dbe3f0;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.match-detail-info p {
+  margin: 0.35rem 0;
+}
+
+@media (max-width: 560px) {
+  .past-convocation-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

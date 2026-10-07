@@ -32,6 +32,7 @@ let players = [];
 let coaches = [];
 let finePeople = [];
 let fines = [];
+let isManagingFines = false;
 
 let currentConvocation = null;
 let creatingNewConvocation = false;
@@ -39,6 +40,7 @@ let currentHighlights = null;
 
 let matches = [];
 let selectedMatchId = null;
+let editingHighlightsMatchId = null;
 let matchesUnsubscribe = null;
 
 let playersUnsubscribe = null;
@@ -144,6 +146,34 @@ const FINE_CATALOG = [
     amount: 3
   }
 ];
+
+const finePeopleSelector = document.getElementById(
+  "fine-people-selector"
+);
+
+const openAddFineBtn = document.getElementById(
+  "open-add-fine-btn"
+);
+
+const fineEditor = document.getElementById(
+  "fine-editor"
+);
+
+const cancelAddFineBtn = document.getElementById(
+  "cancel-add-fine-btn"
+);
+
+const manageFinesBtn = document.getElementById(
+  "manage-fines-btn"
+);
+
+const finesPersonFilter = document.getElementById(
+  "fines-person-filter"
+);
+
+const finesActionsHeader = document.getElementById(
+  "fines-actions-header"
+);
 
 // =====================================================
 // 5. REFERENCIAS DEL DOM
@@ -272,13 +302,21 @@ const convocationPlayersSelector = document.getElementById(
 );
 const convocationMessage = document.getElementById("convocation-message");
 
-const editConvocationBtn = document.getElementById(
-  "edit-convocation-btn"
-);
+
 
 const newConvocationBtn = document.getElementById(
   "new-convocation-btn"
 );
+
+const editConvocationBtn = document.getElementById(
+  "edit-convocation-btn"
+);
+
+const deleteConvocationBtn = document.getElementById(
+  "delete-convocation-btn"
+);
+
+
 
 const convocationEditor = document.getElementById(
   "convocation-editor"
@@ -352,6 +390,45 @@ const goToHighlightsBtn = document.getElementById("go-to-highlights-btn");
 const backToConvocationBtn = document.getElementById(
   "back-to-convocation-btn"
 );
+
+const pastConvocationsContainer = document.getElementById(
+  "past-convocations-container"
+);
+
+const backToHistoryBtn = document.getElementById(
+  "back-to-history-btn"
+);
+
+const matchDetailDate = document.getElementById(
+  "match-detail-date"
+);
+
+const matchDetailLocation = document.getElementById(
+  "match-detail-location"
+);
+
+const matchDetailTime = document.getElementById(
+  "match-detail-time"
+);
+
+const matchDetailImageContainer = document.getElementById(
+  "match-detail-image-container"
+);
+
+const matchDetailPlayers = document.getElementById(
+  "match-detail-players"
+);
+
+const matchDetailScorers = document.getElementById(
+  "match-detail-scorers"
+);
+
+const matchDetailVideoContainer = document.getElementById(
+  "match-detail-video-container"
+);
+
+
+
 const matchHistoryList = document.getElementById("match-history-list");
 const matchHistoryCount = document.getElementById("match-history-count");
 const selectedMatchLabel = document.getElementById("selected-match-label");
@@ -1158,34 +1235,7 @@ function buildFinePeople() {
 }
 
 function renderPlayerSelects() {
-  const finePlayerSelect = document.getElementById("fine-player");
   const statPlayerSelect = document.getElementById("stat-player");
-
-  if (finePlayerSelect) {
-    const selectedValue = finePlayerSelect.value;
-
-    finePlayerSelect.innerHTML = `
-      <option value="">Selecciona una persona</option>
-
-      ${finePeople
-        .map(
-          (person) => `
-            <option value="${person.id}">
-              ${escapeHTML(person.nombre)} · ${
-                person.tipo === "jugador"
-                  ? `Jugador · #${escapeHTML(person.dorsal)}`
-                  : "Entrenador"
-              }
-            </option>
-          `
-        )
-        .join("")}
-    `;
-
-    if (finePeople.some((person) => person.id === selectedValue)) {
-      finePlayerSelect.value = selectedValue;
-    }
-  }
 
   if (statPlayerSelect) {
     const selectedValue = statPlayerSelect.value;
@@ -1197,7 +1247,9 @@ function renderPlayerSelects() {
         .map(
           (player) => `
             <option value="${player.id}">
-              ${escapeHTML(player.nombre)} · #${escapeHTML(player.dorsal)}
+              ${escapeHTML(player.nombre)} · #${escapeHTML(
+                player.dorsal
+              )}
             </option>
           `
         )
@@ -1208,11 +1260,126 @@ function renderPlayerSelects() {
       statPlayerSelect.value = selectedValue;
     }
   }
-}
 
+  renderFinePeopleSelector();
+  renderFinesPersonFilter();
+}
 // =====================================================
 // 11. MULTAS
 // =====================================================
+
+function renderFinePeopleSelector() {
+  if (!finePeopleSelector) return;
+
+  if (!finePeople.length) {
+    finePeopleSelector.innerHTML = `
+      <p class="empty-state">
+        Primero añade jugadores o entrenadores.
+      </p>
+    `;
+    return;
+  }
+
+  finePeopleSelector.innerHTML = finePeople
+    .map((person) => {
+      const detail =
+        person.tipo === "jugador"
+          ? `Jugador · #${escapeHTML(person.dorsal)}`
+          : "Entrenador";
+
+      return `
+        <label class="fine-person-checkbox">
+          <input
+            type="checkbox"
+            name="fine-person"
+            value="${person.id}"
+          />
+
+          <span>
+            ${escapeHTML(person.nombre)} · ${detail}
+          </span>
+        </label>
+      `;
+    })
+    .join("");
+}
+
+function renderFinesPersonFilter() {
+  if (!finesPersonFilter) return;
+
+  const selectedValue = finesPersonFilter.value;
+
+  finesPersonFilter.innerHTML = `
+    <option value="">Todas las personas</option>
+
+    ${finePeople
+      .map((person) => {
+        const detail =
+          person.tipo === "jugador"
+            ? `Jugador · #${escapeHTML(person.dorsal)}`
+            : "Entrenador";
+
+        return `
+          <option value="${person.id}">
+            ${escapeHTML(person.nombre)} · ${detail}
+          </option>
+        `;
+      })
+      .join("")}
+  `;
+
+  if (finePeople.some((person) => person.id === selectedValue)) {
+    finesPersonFilter.value = selectedValue;
+  }
+}
+
+function openFineEditor() {
+  if (!isAdmin || !fineEditor) return;
+
+  fineEditor.classList.remove("hidden");
+
+  if (openAddFineBtn) {
+    openAddFineBtn.classList.add("hidden");
+  }
+
+  if (manageFinesBtn) {
+    manageFinesBtn.classList.add("hidden");
+  }
+
+  renderFinePeopleSelector();
+}
+
+function closeFineEditor() {
+  if (fineEditor) {
+    fineEditor.classList.add("hidden");
+  }
+
+  if (!isAdmin) return;
+
+  if (openAddFineBtn) {
+    openAddFineBtn.classList.remove("hidden");
+  }
+
+  if (manageFinesBtn) {
+    manageFinesBtn.classList.remove("hidden");
+  }
+}
+
+function renderVisibleFines() {
+  const personId = finesPersonFilter?.value || "";
+
+  const visibleFines = personId
+    ? fines.filter((fine) => {
+        return (
+          fine.personaId === personId ||
+          fine.jugadorId === personId
+        );
+      })
+    : fines;
+
+  renderFines(visibleFines);
+}
+
 function renderFineCatalog() {
   if (!fineCatalogBody) return;
 
@@ -1359,6 +1526,57 @@ if (fineCode) {
   fineCode.addEventListener("change", fillFineDataFromCode);
 }
 
+if (openAddFineBtn) {
+  openAddFineBtn.addEventListener("click", () => {
+    openFineEditor();
+  });
+}
+
+if (cancelAddFineBtn) {
+  cancelAddFineBtn.addEventListener("click", () => {
+    if (document.getElementById("add-fine-form")) {
+      document.getElementById("add-fine-form").reset();
+    }
+
+    if (fineDateInput) {
+      fineDateInput.value = getTodayDate();
+    }
+
+    fillFineDataFromCode();
+    closeFineEditor();
+  });
+}
+
+if (manageFinesBtn) {
+  manageFinesBtn.addEventListener("click", () => {
+    if (!isAdmin) return;
+
+    isManagingFines = !isManagingFines;
+
+    manageFinesBtn.textContent = isManagingFines
+      ? "Terminar gestión"
+      : "Gestionar multas";
+
+    manageFinesBtn.classList.toggle(
+      "btn-outline-dark",
+      !isManagingFines
+    );
+
+    manageFinesBtn.classList.toggle(
+      "btn-success",
+      isManagingFines
+    );
+
+    renderVisibleFines();
+  });
+}
+
+if (finesPersonFilter) {
+  finesPersonFilter.addEventListener("change", () => {
+    renderVisibleFines();
+  });
+}
+
 document
   .getElementById("add-fine-form")
   .addEventListener("submit", async (event) => {
@@ -1366,20 +1584,27 @@ document
 
     if (!isAdmin) return;
 
-    const personId = document.getElementById("fine-player").value;
     const code = fineCode.value;
     const date = fineDateInput.value;
 
-    const person = finePeople.find((item) => item.id === personId);
+    const selectedPersonIds = [
+      ...document.querySelectorAll(
+        'input[name="fine-person"]:checked'
+      )
+    ].map((input) => input.value);
+
+    const selectedPeople = finePeople.filter((person) =>
+      selectedPersonIds.includes(person.id)
+    );
 
     const selectedFine = FINE_CATALOG.find(
       (fine) => fine.code === code
     );
 
-    if (!person) {
+    if (!selectedPeople.length) {
       showMessage(
         fineMessage,
-        "Selecciona un jugador o entrenador válido.",
+        "Selecciona al menos una persona.",
         "error"
       );
       return;
@@ -1395,42 +1620,64 @@ document
     }
 
     if (!date) {
-      showMessage(fineMessage, "Selecciona una fecha.", "error");
+      showMessage(
+        fineMessage,
+        "Selecciona una fecha.",
+        "error"
+      );
       return;
     }
 
     try {
-      await db.collection("multas").add({
-        personaId: person.id,
-        personaNombre: person.nombre,
-        personaTipo: person.tipo,
+      const batch = db.batch();
 
-        jugadorId: person.tipo === "jugador" ? person.id : null,
-        jugadorNombre: person.tipo === "jugador" ? person.nombre : null,
+      selectedPeople.forEach((person) => {
+        const fineRef = db.collection("multas").doc();
 
-        codigo: selectedFine.code,
-        motivo: selectedFine.description,
-        importe: selectedFine.amount,
-        fecha: date,
-        creadoPor: currentUser.uid,
-        creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        batch.set(fineRef, {
+          personaId: person.id,
+          personaNombre: person.nombre,
+          personaTipo: person.tipo,
+
+          jugadorId:
+            person.tipo === "jugador" ? person.id : null,
+
+          jugadorNombre:
+            person.tipo === "jugador" ? person.nombre : null,
+
+          codigo: selectedFine.code,
+          motivo: selectedFine.description,
+          importe: selectedFine.amount,
+          fecha: date,
+          creadoPor: currentUser.uid,
+          creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        });
       });
 
+      await batch.commit();
+
       event.target.reset();
-      fineDateInput.value = getTodayDate();
+
+      if (fineDateInput) {
+        fineDateInput.value = getTodayDate();
+      }
 
       fillFineDataFromCode();
 
+      closeFineEditor();
+
       showMessage(
         fineMessage,
-        `Multa ${selectedFine.code} añadida a ${person.nombre}.`
+        selectedPeople.length === 1
+          ? `Multa añadida a ${selectedPeople[0].nombre}.`
+          : `Multa añadida a ${selectedPeople.length} personas.`
       );
     } catch (error) {
       console.error(error);
 
       showMessage(
         fineMessage,
-        "No se ha podido añadir la multa.",
+        "No se han podido guardar las multas.",
         "error"
       );
     }
@@ -1447,7 +1694,7 @@ function loadFines() {
           ...doc.data()
         }));
 
-        renderFines(fines);
+        renderVisibleFines();
         renderMyFines(fines);
       },
       (error) => {
@@ -1465,18 +1712,30 @@ function loadFines() {
 }
 
 function renderFines(finesList) {
-  const total = finesList.reduce(
+  const total = fines.reduce(
     (sum, fine) => sum + Number(fine.importe || 0),
     0
   );
 
-  finesTotal.textContent = `Total general: ${formatCurrency(total)}`;
+  if (finesTotal) {
+    finesTotal.textContent =
+      `Total general: ${formatCurrency(total)}`;
+  }
+
+  const showActions = isAdmin && isManagingFines;
+
+  if (finesActionsHeader) {
+    finesActionsHeader.classList.toggle(
+      "hidden",
+      !showActions
+    );
+  }
 
   if (!finesList.length) {
     finesTableBody.innerHTML = `
       <tr>
-        <td colspan="${isAdmin ? 6 : 5}" class="empty-state">
-          No hay multas registradas.
+        <td colspan="${showActions ? 6 : 5}" class="empty-state">
+          No hay multas que mostrar.
         </td>
       </tr>
     `;
@@ -1508,21 +1767,22 @@ function renderFines(finesList) {
           </td>
 
           <td>${escapeHTML(fine.motivo)}</td>
+
           <td>${formatCurrency(fine.importe)}</td>
 
           ${
-            isAdmin
+            showActions
               ? `
-              <td class="action-cell">
-                <button
-                  class="small-btn btn-danger"
-                  data-action="delete-fine"
-                  data-id="${fine.id}"
-                >
-                  Eliminar
-                </button>
-              </td>
-            `
+                <td class="action-cell">
+                  <button
+                    class="small-btn btn-danger"
+                    data-action="delete-fine"
+                    data-id="${fine.id}"
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              `
               : ""
           }
         </tr>
@@ -1601,6 +1861,7 @@ function renderConvocationPlayersSelector() {
         Primero añade jugadores en la sección Plantilla.
       </p>
     `;
+
     return;
   }
 
@@ -1642,6 +1903,47 @@ function clearConvocationForm() {
   }
 }
 
+function clearHighlightsForm() {
+  if (highlightsDateInput) {
+    highlightsDateInput.value = "";
+  }
+
+  if (highlightsLocationInput) {
+    highlightsLocationInput.value = "";
+  }
+
+  if (highlightsVideoUrlInput) {
+    highlightsVideoUrlInput.value = "";
+  }
+
+  renderHighlightsScorersSelector([]);
+
+  if (highlightsDate) {
+    highlightsDate.textContent = "Pendiente de confirmar";
+  }
+
+  if (highlightsLocation) {
+    highlightsLocation.textContent =
+      "Pendiente de confirmar";
+  }
+
+  if (highlightsScorers) {
+    highlightsScorers.innerHTML = "Sin registrar";
+  }
+
+  if (highlightsVideoContainer) {
+    highlightsVideoContainer.innerHTML = `
+      <p class="empty-state">
+        Todavía no se ha publicado un vídeo de jugadas destacadas.
+      </p>
+    `;
+  }
+
+  if (selectedMatchLabel) {
+    selectedMatchLabel.textContent = "Partido actual";
+  }
+}
+
 function openConvocationEditor({ isNew = false } = {}) {
   if (!isAdmin || !convocationEditor) return;
 
@@ -1659,6 +1961,10 @@ function openConvocationEditor({ isNew = false } = {}) {
 
   if (newConvocationBtn) {
     newConvocationBtn.classList.add("hidden");
+  }
+
+  if (deleteConvocationBtn) {
+    deleteConvocationBtn.classList.add("hidden");
   }
 
   if (convocationEditorTitle) {
@@ -1687,8 +1993,12 @@ function closeConvocationEditor() {
     editConvocationBtn.classList.remove("hidden");
   }
 
-  if (newConvocationBtn) {
+  if (currentConvocation && newConvocationBtn) {
     newConvocationBtn.classList.remove("hidden");
+  }
+
+  if (currentConvocation && deleteConvocationBtn) {
+    deleteConvocationBtn.classList.remove("hidden");
   }
 }
 
@@ -1708,6 +2018,60 @@ if (cancelConvocationEditBtn) {
   cancelConvocationEditBtn.addEventListener("click", () => {
     creatingNewConvocation = false;
     closeConvocationEditor();
+  });
+}
+
+if (deleteConvocationBtn) {
+  deleteConvocationBtn.addEventListener("click", async () => {
+    if (!isAdmin) return;
+
+    if (!currentConvocation) {
+      showMessage(
+        convocationMessage,
+        "No hay ninguna convocatoria publicada para eliminar.",
+        "error"
+      );
+
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "¿Seguro que quieres eliminar la convocatoria actual y su partido asociado?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const partidoId = currentConvocation.partidoId;
+
+      await db
+        .collection("convocatorias")
+        .doc("actual")
+        .delete();
+
+      if (partidoId) {
+        await db
+          .collection("partidos")
+          .doc(partidoId)
+          .delete();
+      }
+
+      selectedMatchId = null;
+      editingHighlightsMatchId = null;
+
+      showMessage(
+        convocationMessage,
+        "Convocatoria eliminada correctamente."
+      );
+    } catch (error) {
+      console.error(error);
+
+      showMessage(
+        convocationMessage,
+        "No se ha podido eliminar la convocatoria.",
+        "error"
+      );
+    }
   });
 }
 
@@ -1735,6 +2099,12 @@ function renderConvocation(convocation) {
       </p>
     `;
 
+    clearConvocationForm();
+    clearHighlightsForm();
+
+    selectedMatchId = null;
+    editingHighlightsMatchId = null;
+
     if (isAdmin) {
       creatingNewConvocation = false;
 
@@ -1746,6 +2116,10 @@ function renderConvocation(convocation) {
         newConvocationBtn.classList.add("hidden");
       }
 
+      if (deleteConvocationBtn) {
+        deleteConvocationBtn.classList.add("hidden");
+      }
+
       if (convocationEditorTitle) {
         convocationEditorTitle.textContent =
           "Publicar convocatoria";
@@ -1754,22 +2128,6 @@ function renderConvocation(convocation) {
       if (saveConvocationBtn) {
         saveConvocationBtn.textContent =
           "Publicar convocatoria";
-      }
-
-      if (convocationLocationInput) {
-        convocationLocationInput.value = "";
-      }
-
-      if (convocationDateInput) {
-        convocationDateInput.value = "";
-      }
-
-      if (convocationTimeInput) {
-        convocationTimeInput.value = "";
-      }
-
-      if (convocationImageUrlInput) {
-        convocationImageUrlInput.value = "";
       }
 
       renderConvocationPlayersSelector();
@@ -1858,10 +2216,6 @@ function renderConvocation(convocation) {
   }
 
   if (isAdmin) {
-    /*
-      Cuando llega una convocatoria ya publicada desde Firestore,
-      dejamos el formulario preparado para editarla, pero oculto.
-    */
     creatingNewConvocation = false;
 
     if (convocationLocationInput) {
@@ -1981,6 +2335,7 @@ if (convocationForm) {
         "Completa ubicación, fecha y hora.",
         "error"
       );
+
       return;
     }
 
@@ -1990,6 +2345,7 @@ if (convocationForm) {
         "Selecciona al menos un jugador convocado.",
         "error"
       );
+
       return;
     }
 
@@ -1999,23 +2355,15 @@ if (convocationForm) {
         "Pega un enlace válido de Google Drive.",
         "error"
       );
+
       return;
     }
 
     try {
-      /*
-        Si se ha pulsado "Nueva convocatoria", no usamos el ID
-        de la convocatoria actual: crearemos un documento nuevo
-        en la colección "partidos".
-      */
       const currentMatchId = creatingNewConvocation
         ? null
         : currentConvocation?.partidoId || null;
 
-      /*
-        Solo buscamos un partido existente si estamos editando
-        la convocatoria actual.
-      */
       const existingMatch = currentMatchId
         ? matches.find((match) => match.id === currentMatchId)
         : null;
@@ -2027,55 +2375,45 @@ if (convocationForm) {
         convocados,
         imageUrl: imageUrl || null,
         actualizadoPor: currentUser.uid,
-        actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        actualizadoEn:
+          firebase.firestore.FieldValue.serverTimestamp()
       };
 
       let matchId;
 
       if (existingMatch) {
-        /*
-          Edición: actualiza el documento del partido actual
-          sin borrar posibles jugadas destacadas ya registradas.
-        */
         matchId = existingMatch.id;
 
-        await db.collection("partidos").doc(matchId).set(
-          matchData,
-          { merge: true }
-        );
+        await db
+          .collection("partidos")
+          .doc(matchId)
+          .set(matchData, { merge: true });
       } else {
-        /*
-          Primera convocatoria o nueva convocatoria:
-          crea un documento independiente para el historial.
-        */
-        const createdMatch = await db.collection("partidos").add({
-          ...matchData,
-          estado: "convocatoria",
-          creadoPor: currentUser.uid,
-          creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        const createdMatch = await db
+          .collection("partidos")
+          .add({
+            ...matchData,
+            estado: "convocatoria",
+            creadoPor: currentUser.uid,
+            creadoEn:
+              firebase.firestore.FieldValue.serverTimestamp()
+          });
 
         matchId = createdMatch.id;
       }
 
-      /*
-        Actualiza el documento que representa la convocatoria
-        que se muestra como "actual" en la app.
-      */
-      await db.collection("convocatorias").doc("actual").set(
-        {
-          ...matchData,
-          partidoId: matchId
-        },
-        { merge: true }
-      );
+      await db
+        .collection("convocatorias")
+        .doc("actual")
+        .set(
+          {
+            ...matchData,
+            partidoId: matchId
+          },
+          { merge: true }
+        );
 
       selectedMatchId = matchId;
-
-      /*
-        Ya se ha guardado: salimos del modo de creación para
-        que vuelvan a aparecer "Editar" y "Nueva convocatoria".
-      */
       creatingNewConvocation = false;
 
       closeConvocationEditor();
@@ -2104,7 +2442,9 @@ if (convocationForm) {
 function getMatchStatus(match) {
   const scorers = normaliseScorers(match.goleadores);
 
-  return match.videoUrl || scorers.length > 0 || match.estado === "finalizado"
+  return match.videoUrl ||
+    scorers.length > 0 ||
+    match.estado === "finalizado"
     ? "Finalizado"
     : "Convocatoria";
 }
@@ -2122,13 +2462,13 @@ function renderMatchesHistory() {
         Todavía no hay convocatorias o partidos anteriores.
       </p>
     `;
+
     return;
   }
 
   matchHistoryList.innerHTML = matches
     .map((match) => {
       const status = getMatchStatus(match);
-
       const statusClass =
         status === "Finalizado" ? "finished" : "";
 
@@ -2201,38 +2541,90 @@ function loadMatchesHistory() {
     );
 }
 
-function renderSelectedMatch(match) {
+function renderMatchDetail(match) {
   if (!match) return;
 
   selectedMatchId = match.id;
 
-  if (selectedMatchLabel) {
-    selectedMatchLabel.textContent =
-      `Partido seleccionado: ${formatMatchDate(match.fecha)} · ${
-        match.ubicacion || "Ubicación pendiente"
-      }`;
+  if (matchDetailDate) {
+    matchDetailDate.textContent =
+      formatMatchDate(match.fecha);
   }
 
-  if (highlightsDate) {
-    highlightsDate.textContent = formatMatchDate(match.fecha);
+  if (matchDetailLocation) {
+    matchDetailLocation.textContent =
+      match.ubicacion || "Ubicación pendiente";
   }
 
-  if (highlightsLocation) {
-    highlightsLocation.textContent =
-      match.ubicacion || "Pendiente de confirmar";
+  if (matchDetailTime) {
+    matchDetailTime.textContent =
+      match.hora || "Hora pendiente";
   }
 
-  if (highlightsScorers) {
-    highlightsScorers.innerHTML = formatScorersHTML(
+  if (matchDetailImageContainer) {
+    const imageUrl = match.imageUrl
+      ? getDriveImageUrl(match.imageUrl)
+      : null;
+
+    matchDetailImageContainer.innerHTML = imageUrl
+      ? `
+        <img
+          src="${escapeHTML(imageUrl)}"
+          alt="Imagen de la convocatoria del partido"
+          class="convocation-image"
+          referrerpolicy="no-referrer"
+        >
+      `
+      : `
+        <p class="empty-state">
+          Esta convocatoria no tiene imagen.
+        </p>
+      `;
+  }
+
+  if (matchDetailPlayers) {
+    const calledPlayers = Array.isArray(match.convocados)
+      ? match.convocados
+      : [];
+
+    matchDetailPlayers.innerHTML = calledPlayers.length
+      ? calledPlayers
+          .map(
+            (player) => `
+              <article class="called-player-card">
+                <span class="called-player-number">
+                  #${escapeHTML(player.dorsal ?? "")}
+                </span>
+
+                <strong>
+                  ${escapeHTML(player.nombre || "Jugador")}
+                </strong>
+
+                <span>
+                  ${escapeHTML(player.posicion || "")}
+                </span>
+              </article>
+            `
+          )
+          .join("")
+      : `
+        <p class="empty-state">
+          No hay jugadores convocados registrados.
+        </p>
+      `;
+  }
+
+  if (matchDetailScorers) {
+    matchDetailScorers.innerHTML = formatScorersHTML(
       match.goleadores
     );
   }
 
-  const previewUrl = getDrivePreviewUrl(match.videoUrl);
+  if (matchDetailVideoContainer) {
+    const previewUrl = getDrivePreviewUrl(match.videoUrl);
 
-  if (highlightsVideoContainer) {
-    if (previewUrl) {
-      highlightsVideoContainer.innerHTML = `
+    matchDetailVideoContainer.innerHTML = previewUrl
+      ? `
         <iframe
           class="highlights-video"
           src="${escapeHTML(previewUrl)}"
@@ -2240,33 +2632,29 @@ function renderSelectedMatch(match) {
           allow="autoplay"
           allowfullscreen
         ></iframe>
-      `;
-    } else {
-      highlightsVideoContainer.innerHTML = `
+      `
+      : `
         <p class="empty-state">
           Todavía no se ha publicado un vídeo de jugadas destacadas para este partido.
         </p>
       `;
-    }
   }
 
-  if (isAdmin) {
-    if (highlightsDateInput) {
-      highlightsDateInput.value = match.fecha || "";
-    }
-
-    if (highlightsLocationInput) {
-      highlightsLocationInput.value =
-        match.ubicacion || "";
-    }
-
-    if (highlightsVideoUrlInput) {
-      highlightsVideoUrlInput.value =
-        match.videoUrl || "";
-    }
-
-    renderHighlightsScorersSelector(match.goleadores || []);
-  }
+  if (isAdmin && matchDetailVideoContainer) {
+  matchDetailVideoContainer.insertAdjacentHTML(
+    "beforeend",
+    `
+      <button
+        type="button"
+        class="btn btn-primary"
+        data-action="edit-highlights"
+        data-match-id="${match.id}"
+      >
+        Editar jugadas destacadas
+      </button>
+    `
+  );
+}
 }
 
 if (matchHistoryList) {
@@ -2283,8 +2671,41 @@ if (matchHistoryList) {
 
     if (!match) return;
 
-    renderSelectedMatch(match);
+    renderMatchDetail(match);
+    showSection("match-detail");
+  });
+}
+
+const matchDetailSection = document.getElementById(
+  "match-detail"
+);
+
+if (matchDetailSection) {
+  matchDetailSection.addEventListener("click", (event) => {
+    const button = event.target.closest(
+      '[data-action="edit-highlights"]'
+    );
+
+    if (!button || !isAdmin) return;
+
+    editingHighlightsMatchId = button.dataset.matchId;
+
+    renderHighlights();
     showSection("jugadas-destacadas");
+
+    if (highlightsEditor) {
+      highlightsEditor.classList.remove("hidden");
+    }
+
+    if (editHighlightsBtn) {
+      editHighlightsBtn.classList.add("hidden");
+    }
+  });
+}
+
+if (backToHistoryBtn) {
+  backToHistoryBtn.addEventListener("click", () => {
+    showSection("convocatoria");
   });
 }
 
@@ -2294,17 +2715,10 @@ if (matchHistoryList) {
 function normaliseScorers(scorers) {
   if (!scorers) return [];
 
-  /*
-    Formato nuevo:
-    [
-      { id: "idJugador", nombre: "Bony", goles: 2 },
-      { id: "idJugador2", nombre: "Santi", goles: 1 }
-    ]
-  */
   if (Array.isArray(scorers)) {
     return scorers
       .map((scorer) => ({
-        id: scorer.id || "",
+        id: scorer.id || scorer.jugadorId || "",
         nombre: String(scorer.nombre || "").trim(),
         goles: Number(scorer.goles || 0)
       }))
@@ -2316,10 +2730,6 @@ function normaliseScorers(scorers) {
       );
   }
 
-  /*
-    Compatibilidad con partidos antiguos guardados como texto:
-    "Bony (2), Santi (1)"
-  */
   return String(scorers)
     .split(",")
     .map((item) => {
@@ -2372,11 +2782,17 @@ function formatScorersHTML(scorers) {
   `;
 }
 
+function getCurrentMatch() {
+  const matchId =
+    editingHighlightsMatchId ||
+    currentConvocation?.partidoId;
 
+  if (!matchId) return null;
 
-let selectedScorers = [];
-
-
+  return (
+    matches.find((match) => match.id === matchId) || null
+  );
+}
 
 function renderHighlightsScorersSelector(existingScorers = []) {
   if (!highlightsScorersSelector) return;
@@ -2399,18 +2815,10 @@ function renderHighlightsScorersSelector(existingScorers = []) {
     ])
   );
 
-  /*
-    Prioridad:
-    1. Partido abierto desde el historial.
-    2. Convocatoria actual.
-    3. Lista vacía si todavía no existe convocatoria.
-  */
-  const selectedMatch = selectedMatchId
-    ? matches.find((match) => match.id === selectedMatchId)
-    : null;
+  const currentMatch = getCurrentMatch();
 
   const calledPlayers =
-    selectedMatch?.convocados ||
+    currentMatch?.convocados ||
     currentConvocation?.convocados ||
     [];
 
@@ -2420,6 +2828,7 @@ function renderHighlightsScorersSelector(existingScorers = []) {
         Primero publica una convocatoria para mostrar los jugadores convocados.
       </p>
     `;
+
     return;
   }
 
@@ -2444,7 +2853,9 @@ function renderHighlightsScorersSelector(existingScorers = []) {
     .map((player) => {
       const goals =
         goalsByPlayerId.get(player.id) ??
-        goalsByPlayerName.get(normaliseName(player.nombre)) ??
+        goalsByPlayerName.get(
+          normaliseName(player.nombre)
+        ) ??
         0;
 
       return `
@@ -2502,149 +2913,98 @@ function getSelectedScorers() {
     );
 }
 
-function openHighlightsEditor() {
-  if (!isAdmin || !highlightsEditor) return;
+function renderHighlights() {
+  const currentMatch = getCurrentMatch();
 
-  highlightsEditor.classList.remove("hidden");
-
-  if (editHighlightsBtn) {
-    editHighlightsBtn.classList.add("hidden");
-  }
-
-  if (currentHighlights) {
-    if (highlightsEditorTitle) {
-      highlightsEditorTitle.textContent = "Editar jugadas destacadas";
+  if (!currentMatch) {
+    if (selectedMatchLabel) {
+      selectedMatchLabel.textContent = "Partido actual";
     }
 
-    if (saveHighlightsBtn) {
-      saveHighlightsBtn.textContent = "Guardar cambios";
-    }
-  } else {
-    if (highlightsEditorTitle) {
-      highlightsEditorTitle.textContent = "Publicar jugadas destacadas";
+    if (highlightsDate) {
+      highlightsDate.textContent = "Pendiente de confirmar";
     }
 
-    if (saveHighlightsBtn) {
-      saveHighlightsBtn.textContent = "Publicar jugadas destacadas";
-    }
-  }
-}
-
-function closeHighlightsEditor() {
-  if (highlightsEditor) {
-    highlightsEditor.classList.add("hidden");
-  }
-
-  if (editHighlightsBtn && isAdmin && currentHighlights) {
-    editHighlightsBtn.classList.remove("hidden");
-  }
-}
-
-if (editHighlightsBtn) {
-  editHighlightsBtn.addEventListener("click", () => {
-    openHighlightsEditor();
-  });
-}
-
-if (cancelHighlightsEditBtn) {
-  cancelHighlightsEditBtn.addEventListener("click", () => {
-    closeHighlightsEditor();
-  });
-}
-
-function renderHighlights(highlights) {
-  currentHighlights = highlights;
-
-  if (isAdmin && highlights) {
-  if (highlightsEditorTitle) {
-    highlightsEditorTitle.textContent =
-      "Editar jugadas destacadas";
-  }
-
-  if (saveHighlightsBtn) {
-    saveHighlightsBtn.textContent = "Guardar cambios";
-  }
-
-  closeHighlightsEditor();
-}
-
-  if (!highlights) {
-  if (highlightsDate) {
-    highlightsDate.textContent = "Pendiente de confirmar";
-  }
-
-  if (highlightsLocation) {
-    highlightsLocation.textContent = "Pendiente de confirmar";
-  }
-
-  if (highlightsScorers) {
-    highlightsScorers.innerHTML = "Sin registrar";
-  }
-
-  if (highlightsVideoContainer) {
-    highlightsVideoContainer.innerHTML = `
-      <p class="empty-state">
-        Todavía no se ha publicado un vídeo de jugadas destacadas.
-      </p>
-    `;
-  }
-
-  if (isAdmin) {
-    if (highlightsDateInput) {
-      highlightsDateInput.value = "";
+    if (highlightsLocation) {
+      highlightsLocation.textContent =
+        "Pendiente de confirmar";
     }
 
-    if (highlightsLocationInput) {
-      highlightsLocationInput.value = "";
+    if (highlightsScorers) {
+      highlightsScorers.innerHTML = "Sin registrar";
     }
 
-    if (highlightsVideoUrlInput) {
-      highlightsVideoUrlInput.value = "";
+    if (highlightsVideoContainer) {
+      highlightsVideoContainer.innerHTML = `
+        <p class="empty-state">
+          Primero publica una convocatoria para poder añadir
+          las jugadas destacadas.
+        </p>
+      `;
     }
 
-    renderHighlightsScorersSelector([]);
+    if (isAdmin) {
+      if (highlightsDateInput) {
+        highlightsDateInput.value = "";
+      }
 
-    if (editHighlightsBtn) {
-      editHighlightsBtn.classList.add("hidden");
+      if (highlightsLocationInput) {
+        highlightsLocationInput.value = "";
+      }
+
+      if (highlightsVideoUrlInput) {
+        highlightsVideoUrlInput.value = "";
+      }
+
+      renderHighlightsScorersSelector([]);
+
+      if (highlightsEditorTitle) {
+        highlightsEditorTitle.textContent =
+          "Publicar jugadas destacadas";
+      }
+
+      if (saveHighlightsBtn) {
+        saveHighlightsBtn.textContent =
+          "Publicar jugadas destacadas";
+      }
     }
 
-    if (highlightsEditorTitle) {
-      highlightsEditorTitle.textContent =
-        "Publicar jugadas destacadas";
-    }
-
-    if (saveHighlightsBtn) {
-      saveHighlightsBtn.textContent =
-        "Publicar jugadas destacadas";
-    }
-
-    openHighlightsEditor();
+    return;
   }
 
-  return;
-}
+  selectedMatchId = currentMatch.id;
+
+  if (selectedMatchLabel) {
+    selectedMatchLabel.textContent =
+      `Partido seleccionado: ${formatMatchDate(currentMatch.fecha)} · ${
+        currentMatch.ubicacion || "Ubicación pendiente"
+      }`;
+  }
 
   if (highlightsDate) {
-    highlightsDate.textContent =
-      formatMatchDate(highlights.fecha);
+    highlightsDate.textContent = formatMatchDate(
+      currentMatch.fecha
+    );
   }
 
   if (highlightsLocation) {
     highlightsLocation.textContent =
-      highlights.ubicacion || "Pendiente de confirmar";
+      currentMatch.ubicacion || "Pendiente de confirmar";
   }
 
   if (highlightsScorers) {
     highlightsScorers.innerHTML = formatScorersHTML(
-      highlights.goleadores
+      currentMatch.goleadores
     );
   }
 
-  const previewUrl = getDrivePreviewUrl(highlights.videoUrl);
-
   if (highlightsVideoContainer) {
-    if (previewUrl) {
-      highlightsVideoContainer.innerHTML = `
+    const previewUrl = getDrivePreviewUrl(
+      currentMatch.videoUrl
+    );
+
+    highlightsVideoContainer.innerHTML = previewUrl
+      ? `
         <iframe
           class="highlights-video"
           src="${escapeHTML(previewUrl)}"
@@ -2652,62 +3012,93 @@ function renderHighlights(highlights) {
           allow="autoplay"
           allowfullscreen
         ></iframe>
-      `;
-    } else {
-      highlightsVideoContainer.innerHTML = `
+      `
+      : `
         <p class="empty-state">
-          Todavía no se ha publicado un vídeo de jugadas destacadas.
+          Todavía no se ha publicado un vídeo de jugadas destacadas
+          para este partido.
         </p>
       `;
-    }
   }
 
   if (isAdmin) {
     if (highlightsDateInput) {
-      highlightsDateInput.value = highlights.fecha || "";
+      highlightsDateInput.value =
+        currentMatch.fecha || "";
     }
 
     if (highlightsLocationInput) {
       highlightsLocationInput.value =
-        highlights.ubicacion || "";
+        currentMatch.ubicacion || "";
     }
 
     if (highlightsVideoUrlInput) {
       highlightsVideoUrlInput.value =
-        highlights.videoUrl || "";
+        currentMatch.videoUrl || "";
     }
 
     renderHighlightsScorersSelector(
-      highlights.goleadores || []
+      currentMatch.goleadores || []
     );
+
+    if (highlightsEditorTitle) {
+      highlightsEditorTitle.textContent =
+        currentMatch.videoUrl ||
+        normaliseScorers(currentMatch.goleadores).length
+          ? "Editar jugadas destacadas"
+          : "Publicar jugadas destacadas";
+    }
+
+    if (saveHighlightsBtn) {
+      saveHighlightsBtn.textContent =
+        currentMatch.videoUrl ||
+        normaliseScorers(currentMatch.goleadores).length
+          ? "Guardar cambios"
+          : "Publicar jugadas destacadas";
+    }
   }
 }
 
 function loadHighlights() {
-  highlightsUnsubscribe = db
-    .collection("jugadasDestacadas")
-    .doc("actual")
-    .onSnapshot(
-      (doc) => {
-        renderHighlights(
-          doc.exists ? doc.data() : null
-        );
-      },
-      (error) => {
-        console.error(
-          "Error al cargar jugadas destacadas actuales:",
-          error
-        );
+  renderHighlights();
+}
 
-        if (highlightsVideoContainer) {
-          highlightsVideoContainer.innerHTML = `
-            <p class="empty-state">
-              No se han podido cargar las jugadas destacadas.
-            </p>
-          `;
-        }
-      }
-    );
+if (goToHighlightsBtn) {
+  goToHighlightsBtn.addEventListener("click", () => {
+    editingHighlightsMatchId = null;
+
+    renderHighlights();
+    showSection("jugadas-destacadas");
+  });
+}
+
+if (backToConvocationBtn) {
+  backToConvocationBtn.addEventListener("click", () => {
+    showSection("convocatoria");
+  });
+}
+
+if (editHighlightsBtn) {
+  editHighlightsBtn.addEventListener("click", () => {
+    if (!isAdmin || !highlightsEditor) return;
+
+    highlightsEditor.classList.remove("hidden");
+    editHighlightsBtn.classList.add("hidden");
+
+    renderHighlights();
+  });
+}
+
+if (cancelHighlightsEditBtn) {
+  cancelHighlightsEditBtn.addEventListener("click", () => {
+    if (highlightsEditor) {
+      highlightsEditor.classList.add("hidden");
+    }
+
+    if (editHighlightsBtn && isAdmin) {
+      editHighlightsBtn.classList.remove("hidden");
+    }
+  });
 }
 
 if (highlightsForm) {
@@ -2716,21 +3107,30 @@ if (highlightsForm) {
 
     if (!isAdmin) return;
 
+    const currentMatch = getCurrentMatch();
+
+    if (!currentMatch) {
+      showMessage(
+        highlightsMessage,
+        "Primero publica una convocatoria.",
+        "error"
+      );
+
+      return;
+    }
+
     const fecha = highlightsDateInput.value;
     const ubicacion = highlightsLocationInput.value.trim();
-    const goleadores = getSelectedScorers();
     const videoUrl = highlightsVideoUrlInput.value.trim();
+    const goleadores = getSelectedScorers();
 
-    /*
-      Los goleadores no son obligatorios:
-      el partido puede haber terminado 0-0.
-    */
     if (!fecha || !ubicacion) {
       showMessage(
         highlightsMessage,
         "Completa la fecha y la ubicación del partido.",
         "error"
       );
+
       return;
     }
 
@@ -2740,65 +3140,34 @@ if (highlightsForm) {
         "Pega un enlace válido de un vídeo de Google Drive.",
         "error"
       );
+
       return;
     }
 
-    let targetMatchId =
-      selectedMatchId ||
-      currentConvocation?.partidoId ||
-      null;
-
     try {
-      if (!targetMatchId) {
-        const matchSnapshot = await db
-          .collection("partidos")
-          .where("fecha", "==", fecha)
-          .where("ubicacion", "==", ubicacion)
-          .get();
-
-        if (!matchSnapshot.empty) {
-          targetMatchId = matchSnapshot.docs[0].id;
-        }
-      }
-
-      if (!targetMatchId) {
-        showMessage(
-          highlightsMessage,
-          "No se ha encontrado un partido asociado. Publica primero una convocatoria o abre un partido desde el historial.",
-          "error"
+      await db
+        .collection("partidos")
+        .doc(currentMatch.id)
+        .set(
+          {
+            fecha,
+            ubicacion,
+            goleadores,
+            videoUrl: videoUrl || null,
+            estado: "finalizado",
+            actualizadoPor: currentUser.uid,
+            actualizadoEn:
+              firebase.firestore.FieldValue.serverTimestamp()
+          },
+          { merge: true }
         );
-        return;
-      }
-
-      const highlightsData = {
-        fecha,
-        ubicacion,
-        goleadores,
-        videoUrl: videoUrl || null,
-        estado: "finalizado",
-        actualizadoPor: currentUser.uid,
-        actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      await db.collection("partidos").doc(targetMatchId).set(
-        highlightsData,
-        { merge: true }
-      );
-
-      await db.collection("jugadasDestacadas").doc("actual").set(
-        {
-          ...highlightsData,
-          partidoId: targetMatchId
-        },
-        { merge: true }
-      );
-
-      selectedMatchId = targetMatchId;
 
       showMessage(
         highlightsMessage,
         "Jugadas destacadas guardadas correctamente."
       );
+
+      renderHighlights();
     } catch (error) {
       console.error(error);
 
@@ -2808,35 +3177,6 @@ if (highlightsForm) {
         "error"
       );
     }
-  });
-}
-
-if (goToHighlightsBtn) {
-  goToHighlightsBtn.addEventListener("click", () => {
-    selectedMatchId =
-      selectedMatchId ||
-      currentConvocation?.partidoId ||
-      null;
-
-    /*
-      Si se ha publicado una convocatoria actual, muestra
-      sus datos en la pantalla de jugadas destacadas.
-    */
-    const selectedMatch = matches.find(
-      (match) => match.id === selectedMatchId
-    );
-
-    if (selectedMatch) {
-      renderSelectedMatch(selectedMatch);
-    }
-
-    showSection("jugadas-destacadas");
-  });
-}
-
-if (backToConvocationBtn) {
-  backToConvocationBtn.addEventListener("click", () => {
-    showSection("convocatoria");
   });
 }
 

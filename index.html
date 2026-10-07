@@ -485,9 +485,10 @@
       </div>
       </section>
 
+    
       <!-- =================================================
-           MULTAS
-           ================================================= -->
+          MULTAS
+          ================================================= -->
       <section id="multas" class="section-panel hidden">
         <div class="section-heading">
           <div>
@@ -500,10 +501,11 @@
           </span>
         </div>
 
+        <!-- CATÁLOGO -->
         <details class="fine-catalog">
           <summary>
             <span>Ver tipos de multa y códigos</span>
-            <span class="catalog-arrow">⌄</span>
+            <span class="catalog-arrow">⬆️</span>
           </summary>
 
           <p class="fine-catalog-description">
@@ -560,75 +562,129 @@
           </div>
         </section>
 
-        <!-- AÑADIR MULTA: SOLO ENTRENADORES -->
-        <div id="fine-form-container" class="admin-only">
-          <h3>Añadir multa</h3>
+        <!-- CONTROLES DE ENTRENADOR -->
+        <section id="fine-admin-container" class="admin-only">
+          <div class="fine-admin-actions">
+            <button
+              id="open-add-fine-btn"
+              class="btn btn-primary"
+              type="button"
+            >
+              Añadir multa
+            </button>
 
-          <form id="add-fine-form" class="grid-form fines-form">
-            <div>
-              <label for="fine-player">Jugador o entrenador</label>
-              <select id="fine-player" required>
-                <option value="">Selecciona una persona</option>
-              </select>
-            </div>
+            <button
+              id="manage-fines-btn"
+              class="btn btn-outline-dark"
+              type="button"
+            >
+              Gestionar multas
+            </button>
+          </div>
 
-            <div>
-              <label for="fine-code">Código de multa</label>
-              <select id="fine-code" required>
-                <option value="">Selecciona un código</option>
-              </select>
-            </div>
+          <!-- EDITOR OCULTO DE MULTAS -->
+          <div id="fine-editor" class="hidden">
+            <h3>Añadir multa</h3>
 
-            <div>
-              <label for="fine-amount">Importe (€)</label>
-              <input
-                id="fine-amount"
-                type="number"
-                min="0"
-                step="0.01"
-                readonly
-                required
-              />
-            </div>
+            <form id="add-fine-form" class="grid-form fines-form">
+              <!-- PERSONAS: PERMITE UNA O VARIAS -->
+              <div class="fine-people-field">
+                <label>Jugadores o entrenadores</label>
 
-            <div>
-              <label for="fine-date">Fecha</label>
-              <input id="fine-date" type="date" required />
-            </div>
+                <p class="help-text">
+                  Marca una o varias personas a las que aplicar la misma multa.
+                </p>
 
-            <div class="fine-description-field">
-              <label for="fine-reason">Motivo de la multa</label>
-              <input
-                id="fine-reason"
-                type="text"
-                readonly
-                placeholder="Selecciona un código de multa"
-                required
-              />
-            </div>
+                <div
+                  id="fine-people-selector"
+                  class="fine-people-selector"
+                >
+                  <p class="empty-state">
+                    Cargando jugadores y entrenadores...
+                  </p>
+                </div>
+              </div>
 
-            <div class="form-action">
-              <button class="btn btn-primary" type="submit">
-                Añadir multa
-              </button>
-            </div>
-          </form>
+              <div>
+                <label for="fine-code">Código de multa</label>
 
-          <p id="fine-message" class="form-message"></p>
-        </div>
+                <select id="fine-code" required>
+                  <option value="">Selecciona un código</option>
+                </select>
+              </div>
 
-        <!-- TABLA GENERAL -->
+              <div>
+                <label for="fine-amount">Importe (€)</label>
+
+                <input
+                  id="fine-amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  readonly
+                  required
+                />
+              </div>
+
+              <div>
+                <label for="fine-date">Fecha</label>
+
+                <input id="fine-date" type="date" required />
+              </div>
+
+              <div class="fine-description-field">
+                <label for="fine-reason">Motivo de la multa</label>
+
+                <input
+                  id="fine-reason"
+                  type="text"
+                  readonly
+                  placeholder="Selecciona un código de multa"
+                  required
+                />
+              </div>
+
+              <div class="form-action fine-editor-actions">
+                <button
+                  id="cancel-add-fine-btn"
+                  class="btn btn-outline-dark"
+                  type="button"
+                >
+                  Cancelar
+                </button>
+
+                <button class="btn btn-primary" type="submit">
+                  Guardar multa
+                </button>
+              </div>
+            </form>
+
+            <p id="fine-message" class="form-message"></p>
+          </div>
+        </section>
+
+        <!-- HISTORIAL GENERAL -->
         <section class="general-fines">
           <div class="general-fines-header">
             <div>
               <p class="eyebrow">Equipo</p>
-              <h3>Multas generales</h3>
+              <h3>Historial de multas</h3>
             </div>
 
-            <p class="general-fines-note">
-              Historial de multas de jugadores y entrenadores.
-            </p>
+            <div class="fines-filter">
+              <label for="fines-person-filter">
+                Filtrar por persona
+              </label>
+
+              <select id="fines-person-filter">
+                <option value="">Todas las personas</option>
+              </select>
+            </div>
           </div>
+
+          <p class="general-fines-note">
+            Consulta las multas registradas de jugadores y entrenadores.
+          </p>
 
           <div class="table-wrapper">
             <table>
@@ -639,7 +695,9 @@
                   <th>Código</th>
                   <th>Motivo</th>
                   <th>Importe</th>
-                  <th class="admin-column">Acciones</th>
+                  <th id="fines-actions-header" class="hidden">
+                    Acciones
+                  </th>
                 </tr>
               </thead>
 
@@ -649,10 +707,10 @@
         </section>
       </section>
 
-      <!-- =================================================
-           CONVOCATORIA
-           Firestore guarda datos y enlaces de Google Drive
-           ================================================= -->
+     <!-- =================================================
+     CONVOCATORIA
+     Firestore guarda datos y enlaces de Google Drive
+     ================================================= -->
       <section id="convocatoria" class="section-panel hidden">
         <div class="section-heading">
           <div>
@@ -724,118 +782,125 @@
         </section>
 
         <!-- FORMULARIO: SOLO ENTRENADORES -->
-        <!-- EDICIÓN DE CONVOCATORIA: SOLO ENTRENADORES -->
-      <section id="convocation-admin-container" class="admin-only">
-        <div class="convocation-admin-actions">
-          <button
-            id="new-convocation-btn"
-            class="btn btn-primary"
-            type="button"
-          >
-            Nueva convocatoria
-          </button>
+        <section id="convocation-admin-container" class="admin-only">
+          <div class="convocation-admin-actions">
+            <button
+              id="new-convocation-btn"
+              class="btn btn-primary"
+              type="button"
+            >
+              Nueva convocatoria
+            </button>
 
-          <button
-            id="edit-convocation-btn"
-            class="btn btn-outline-dark"
-            type="button"
-          >
-            Editar convocatoria
-          </button>
-        </div>
+            <button
+              id="edit-convocation-btn"
+              class="btn btn-outline-dark"
+              type="button"
+            >
+              Editar convocatoria
+            </button>
 
-        <div id="convocation-editor" class="hidden">
-          <h3 id="convocation-editor-title">Publicar convocatoria</h3>
+            <button
+              id="delete-convocation-btn"
+              class="btn btn-danger"
+              type="button"
+            >
+              Eliminar convocatoria
+            </button>
+          </div>
 
-          <form id="convocation-form" class="convocation-form">
-            <div class="grid-form">
-              <div>
-                <label for="convocation-location-input">
-                  Ubicación
-                </label>
+          <div id="convocation-editor" class="hidden">
+            <h3 id="convocation-editor-title">Publicar convocatoria</h3>
 
-                <input
-                  id="convocation-location-input"
-                  type="text"
-                  placeholder="Ej.: Polideportivo La Luz"
-                  required
-                />
+            <form id="convocation-form" class="convocation-form">
+              <div class="grid-form">
+                <div>
+                  <label for="convocation-location-input">
+                    Ubicación
+                  </label>
+
+                  <input
+                    id="convocation-location-input"
+                    type="text"
+                    placeholder="Ej.: Polideportivo La Luz"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label for="convocation-date-input">
+                    Fecha del partido
+                  </label>
+
+                  <input
+                    id="convocation-date-input"
+                    type="date"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label for="convocation-time-input">Hora</label>
+
+                  <input
+                    id="convocation-time-input"
+                    type="time"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label for="convocation-image-url-input">
+                    Enlace de imagen desde Google Drive
+                  </label>
+
+                  <input
+                    id="convocation-image-url-input"
+                    type="url"
+                    placeholder="https://drive.google.com/..."
+                  />
+                </div>
               </div>
 
-              <div>
-                <label for="convocation-date-input">
-                  Fecha del partido
-                </label>
+              <div class="called-players-selector">
+                <h4>Selecciona los jugadores convocados</h4>
 
-                <input
-                  id="convocation-date-input"
-                  type="date"
-                  required
-                />
-              </div>
-
-              <div>
-                <label for="convocation-time-input">Hora</label>
-
-                <input
-                  id="convocation-time-input"
-                  type="time"
-                  required
-                />
-              </div>
-
-              <div>
-                <label for="convocation-image-url-input">
-                  Enlace de imagen desde Google Drive
-                </label>
-
-                <input
-                  id="convocation-image-url-input"
-                  type="url"
-                  placeholder="https://drive.google.com/..."
-                />
-              </div>
-            </div>
-
-            <div class="called-players-selector">
-              <h4>Selecciona los jugadores convocados</h4>
-
-              <p class="help-text">
-                Marca los jugadores que estarán convocados para el partido.
-              </p>
-
-              <div
-                id="convocation-players-selector"
-                class="players-checkbox-grid"
-              >
-                <p class="empty-state">
-                  Primero añade jugadores en la sección Plantilla.
+                <p class="help-text">
+                  Marca los jugadores que estarán convocados para el partido.
                 </p>
+
+                <div
+                  id="convocation-players-selector"
+                  class="players-checkbox-grid"
+                >
+                  <p class="empty-state">
+                    Primero añade jugadores en la sección Plantilla.
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div class="convocation-editor-actions">
-              <button
-                id="cancel-convocation-edit-btn"
-                type="button"
-                class="btn btn-outline-dark"
-              >
-                Cancelar
-              </button>
+              <div class="convocation-editor-actions">
+                <button
+                  id="cancel-convocation-edit-btn"
+                  type="button"
+                  class="btn btn-outline-dark"
+                >
+                  Cancelar
+                </button>
 
-              <button
-                id="save-convocation-btn"
-                type="submit"
-                class="btn btn-primary"
-              >
-                Publicar convocatoria
-              </button>
-            </div>
+                <button
+                  id="save-convocation-btn"
+                  type="submit"
+                  class="btn btn-primary"
+                >
+                  Publicar convocatoria
+                </button>
+              </div>
 
-            <p id="convocation-message" class="form-message"></p>
-          </form>
-        </div>
-      </section>
+              <p id="convocation-message" class="form-message"></p>
+            </form>
+          </div>
+        </section>
 
         <!-- ENLACE A JUGADAS DESTACADAS -->
         <section class="highlights-link-card">
@@ -855,9 +920,9 @@
             type="button"
           >
             Jugadas destacadas
-          </button>          
+          </button>
         </section>
-     
+
         <!-- HISTORIAL DE CONVOCATORIAS Y PARTIDOS -->
         <section class="match-history-section">
           <div class="section-subheading">
@@ -884,9 +949,65 @@
         </section>
       </section>
 
-<!-- =================================================
-     JUGADAS DESTACADAS
-================================================= -->
+      <!-- =====================================================
+          DETALLE DE UN PARTIDO PASADO
+          ===================================================== -->
+      <section id="match-detail" class="section-panel hidden">
+        <div class="section-header">
+          <button
+            class="btn btn-outline-dark"
+            id="back-to-history-btn"
+            type="button"
+          >
+            Volver a convocatoria
+          </button>
+
+          <h2>Detalle del partido</h2>
+        </div>
+
+        <article class="match-detail-card">
+          <h3>Convocatoria</h3>
+
+          <div class="match-detail-info">
+            <p>
+              <strong>Fecha:</strong>
+              <span id="match-detail-date">-</span>
+            </p>
+
+            <p>
+              <strong>Ubicación:</strong>
+              <span id="match-detail-location">-</span>
+            </p>
+
+            <p>
+              <strong>Hora:</strong>
+              <span id="match-detail-time">-</span>
+            </p>
+          </div>
+
+          <div id="match-detail-image-container"></div>
+
+          <h4>Jugadores convocados</h4>
+          <div id="match-detail-players"></div>
+        </article>
+
+        <article class="match-detail-card">
+          <h3>Jugadas destacadas</h3>
+
+          <div class="match-detail-info">
+            <p>
+              <strong>Goleadores:</strong>
+              <span id="match-detail-scorers">-</span>
+            </p>
+          </div>
+
+          <div id="match-detail-video-container"></div>
+        </article>
+      </section>
+
+      <!-- =================================================
+          JUGADAS DESTACADAS
+          ================================================= -->
       <section id="jugadas-destacadas" class="section-panel hidden">
         <div class="section-heading highlights-heading">
           <div class="highlights-heading-title">
@@ -908,9 +1029,8 @@
             </button>
           </div>
         </div>
-<!-- =================================================
-        INFORMACIÓN PÚBLICA DEL PARTIDO
-================================================= -->
+
+        <!-- INFORMACIÓN PÚBLICA DEL PARTIDO -->
         <section class="match-info-card">
           <div class="match-info-item">
             <span class="match-info-label">Fecha del partido</span>
@@ -947,115 +1067,113 @@
             </p>
           </div>
         </section>
-<!-- FORMULARIO: SOLO ENTRENADORES -->
-    <section id="highlights-admin-container" class="admin-only">
-      <button
-        id="edit-highlights-btn"
-        class="btn btn-outline-dark"
-        type="button"
-      >
-        Editar jugadas destacadas
-      </button>
 
-      <div id="highlights-editor" class="hidden">
-        <h3 id="highlights-editor-title">
-          Publicar jugadas destacadas
-        </h3>
+        <!-- FORMULARIO: SOLO ENTRENADORES -->
+        <section id="highlights-admin-container" class="admin-only">
+          <button
+            id="edit-highlights-btn"
+            class="btn btn-outline-dark"
+            type="button"
+          >
+            Editar jugadas destacadas
+          </button>
 
-        <form id="highlights-form" class="highlights-form">
-          <!-- GOLEADORES: SOLO JUGADORES CONVOCADOS -->
-          <div class="highlights-scorers-field">
-            <label for="highlights-scorers-selector">
-              Goleadores del partido
-            </label>
-
-            <p class="help-text">
-              Indica cuántos goles ha marcado cada jugador convocado.
-            </p>
-
-            <div
-              id="highlights-scorers-selector"
-              class="highlights-scorers-selector"
-              aria-live="polite"
-            >
-              <p class="empty-state">
-                Primero publica una convocatoria para mostrar los jugadores convocados.
-              </p>
-            </div>
-          </div>
-
-          <!-- DATOS DEL PARTIDO -->
-          <div class="grid-form highlights-match-data">
-            <div>
-              <label for="highlights-date-input">
-                Fecha del partido
-              </label>
-
-              <input
-                id="highlights-date-input"
-                type="date"
-                required
-              />
-            </div>
-
-            <div>
-              <label for="highlights-location-input">
-                Ubicación
-              </label>
-
-              <input
-                id="highlights-location-input"
-                type="text"
-                placeholder="Ej.: Polideportivo La Luz"
-                required
-              />
-            </div>
-
-            <div>
-              <label for="highlights-video-url-input">
-                Enlace de vídeo desde Google Drive
-              </label>
-
-              <input
-                id="highlights-video-url-input"
-                type="url"
-                placeholder="https://drive.google.com/file/d/..."
-              />
-            </div>
-          </div>
-
-          <p class="help-text highlights-video-help">
-            Sube primero el vídeo a Google Drive. En <strong>Compartir</strong>,
-            selecciona “Cualquier persona con el enlace” y el permiso “Lector”.
-            Después pega aquí el enlace del archivo.
-          </p>
-
-          <div class="highlights-editor-actions">
-            <button
-              id="cancel-highlights-edit-btn"
-              type="button"
-              class="btn btn-outline-dark"
-            >
-              Cancelar
-            </button>
-
-            <button
-              id="save-highlights-btn"
-              type="submit"
-              class="btn btn-primary"
-            >
+          <div id="highlights-editor" class="hidden">
+            <h3 id="highlights-editor-title">
               Publicar jugadas destacadas
-            </button>
+            </h3>
+
+            <form id="highlights-form" class="highlights-form">
+              <!-- GOLEADORES: SOLO JUGADORES CONVOCADOS -->
+              <div class="highlights-scorers-field">
+                <label for="highlights-scorers-selector">
+                  Goleadores del partido
+                </label>
+
+                <p class="help-text">
+                  Indica cuántos goles ha marcado cada jugador convocado.
+                </p>
+
+                <div
+                  id="highlights-scorers-selector"
+                  class="highlights-scorers-selector"
+                  aria-live="polite"
+                >
+                  <p class="empty-state">
+                    Primero publica una convocatoria para mostrar los jugadores convocados.
+                  </p>
+                </div>
+              </div>
+
+              <!-- DATOS DEL PARTIDO -->
+              <div class="grid-form highlights-match-data">
+                <div>
+                  <label for="highlights-date-input">
+                    Fecha del partido
+                  </label>
+
+                  <input
+                    id="highlights-date-input"
+                    type="date"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label for="highlights-location-input">
+                    Ubicación
+                  </label>
+
+                  <input
+                    id="highlights-location-input"
+                    type="text"
+                    placeholder="Ej.: Polideportivo La Luz"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label for="highlights-video-url-input">
+                    Enlace de vídeo desde Google Drive
+                  </label>
+
+                  <input
+                    id="highlights-video-url-input"
+                    type="url"
+                    placeholder="https://drive.google.com/file/d/..."
+                  />
+                </div>
+              </div>
+
+              <p class="help-text highlights-video-help">
+                Sube primero el vídeo a Google Drive. En <strong>Compartir</strong>,
+                selecciona “Cualquier persona con el enlace” y el permiso “Lector”.
+                Después pega aquí el enlace del archivo.
+              </p>
+
+              <div class="highlights-editor-actions">
+                <button
+                  id="cancel-highlights-edit-btn"
+                  type="button"
+                  class="btn btn-outline-dark"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  id="save-highlights-btn"
+                  type="submit"
+                  class="btn btn-primary"
+                >
+                  Publicar jugadas destacadas
+                </button>
+              </div>
+
+              <p id="highlights-message" class="form-message"></p>
+            </form>
           </div>
-
-          <p id="highlights-message" class="form-message"></p>
-        </form>
-      </div>
-    </section>
-    <!-- FIN DEL PANEL DE ENTRENADOR -->
-
-    </section>
-    <!-- FIN DE LA SECCIÓN PRINCIPAL: JUGADAS DESTACADAS -->
+        </section>
+      </section>
 
 <!-- =================================================
       FORMULARIO DE ESTADÍSTICAS
