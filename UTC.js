@@ -262,6 +262,16 @@ const trainingMessage = document.getElementById("training-message");
 const fineCode = document.getElementById("fine-code");
 const fineReason = document.getElementById("fine-reason");
 const fineAmount = document.getElementById("fine-amount");
+
+const fineMinutesField = document.getElementById(
+  "fine-minutes-field"
+);
+
+const fineMinutes = document.getElementById(
+  "fine-minutes"
+);
+
+
 const fineCatalogBody = document.getElementById("fine-catalog-body");
 
 const myFinesTableBody = document.getElementById("my-fines-table-body");
@@ -1417,21 +1427,46 @@ function fillFineDataFromCode() {
     (fine) => fine.code === fineCode.value
   );
 
+  const isLateMatchFine =
+    fineCode.value === "T_PAR";
+
+  if (fineMinutesField) {
+    fineMinutesField.classList.toggle(
+      "hidden",
+      !isLateMatchFine
+    );
+  }
+
+  if (!isLateMatchFine && fineMinutes) {
+    fineMinutes.value = "";
+  }
+
   if (!selectedFine) {
     fineReason.value = "";
     fineAmount.value = "";
     return;
   }
 
+  const minutes = isLateMatchFine
+    ? Number(fineMinutes?.value || 0)
+    : 1;
+
+  const totalAmount =
+    isLateMatchFine && minutes > 0
+      ? selectedFine.amount * minutes
+      : selectedFine.amount;
+
   fineReason.value = selectedFine.description;
-  fineAmount.value = selectedFine.amount.toFixed(2);
+
+  fineAmount.value = totalAmount.toFixed(2);
 }
 
 function getCurrentFinePerson() {
   const registeredName = normaliseName(currentUserName);
 
   const playerMatch = players.find(
-    (player) => normaliseName(player.nombre) === registeredName
+    (player) =>
+      normaliseName(player.nombre) === registeredName
   );
 
   if (playerMatch) {
@@ -1443,7 +1478,8 @@ function getCurrentFinePerson() {
   }
 
   const coachMatch = coaches.find(
-    (coach) => normaliseName(coach.nombre) === registeredName
+    (coach) =>
+      normaliseName(coach.nombre) === registeredName
   );
 
   if (coachMatch) {
@@ -1526,6 +1562,13 @@ if (fineCode) {
   fineCode.addEventListener("change", fillFineDataFromCode);
 }
 
+if (fineMinutes) {
+  fineMinutes.addEventListener(
+    "change",
+    fillFineDataFromCode
+  );
+}
+
 if (openAddFineBtn) {
   openAddFineBtn.addEventListener("click", () => {
     openFineEditor();
@@ -1534,8 +1577,10 @@ if (openAddFineBtn) {
 
 if (cancelAddFineBtn) {
   cancelAddFineBtn.addEventListener("click", () => {
-    if (document.getElementById("add-fine-form")) {
-      document.getElementById("add-fine-form").reset();
+    const fineForm = document.getElementById("add-fine-form");
+
+    if (fineForm) {
+      fineForm.reset();
     }
 
     if (fineDateInput) {
@@ -1601,12 +1646,19 @@ document
       (fine) => fine.code === code
     );
 
+    const isLateMatchFine = code === "T_PAR";
+
+    const lateMinutes = isLateMatchFine
+      ? Number(fineMinutes?.value || 0)
+      : 0;
+
     if (!selectedPeople.length) {
       showMessage(
         fineMessage,
         "Selecciona al menos una persona.",
         "error"
       );
+
       return;
     }
 
@@ -1616,6 +1668,17 @@ document
         "Selecciona un código de multa válido.",
         "error"
       );
+
+      return;
+    }
+
+    if (isLateMatchFine && (!lateMinutes || lateMinutes <= 0)) {
+      showMessage(
+        fineMessage,
+        "Selecciona los minutos de retraso.",
+        "error"
+      );
+
       return;
     }
 
@@ -1625,6 +1688,7 @@ document
         "Selecciona una fecha.",
         "error"
       );
+
       return;
     }
 
@@ -1643,14 +1707,21 @@ document
             person.tipo === "jugador" ? person.id : null,
 
           jugadorNombre:
-            person.tipo === "jugador" ? person.nombre : null,
+            person.tipo === "jugador"
+              ? person.nombre
+              : null,
 
           codigo: selectedFine.code,
           motivo: selectedFine.description,
-          importe: selectedFine.amount,
+
+          importe: isLateMatchFine
+            ? selectedFine.amount * lateMinutes
+            : selectedFine.amount,
+
           fecha: date,
           creadoPor: currentUser.uid,
-          creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+          creadoEn:
+            firebase.firestore.FieldValue.serverTimestamp()
         });
       });
 
@@ -1663,14 +1734,17 @@ document
       }
 
       fillFineDataFromCode();
-
       closeFineEditor();
+
+      const peopleNames = selectedPeople
+        .map((person) => person.nombre)
+        .join(", ");
 
       showMessage(
         fineMessage,
-        selectedPeople.length === 1
-          ? `Multa añadida a ${selectedPeople[0].nombre}.`
-          : `Multa añadida a ${selectedPeople.length} personas.`
+        isLateMatchFine
+          ? `Multa ${selectedFine.code} añadida a ${peopleNames} por ${lateMinutes} minutos de retraso.`
+          : `Multa ${selectedFine.code} añadida a ${peopleNames}.`
       );
     } catch (error) {
       console.error(error);
@@ -1739,6 +1813,7 @@ function renderFines(finesList) {
         </td>
       </tr>
     `;
+
     return;
   }
 
@@ -1792,18 +1867,26 @@ function renderFines(finesList) {
 }
 
 finesTableBody.addEventListener("click", async (event) => {
-  const button = event.target.closest('[data-action="delete-fine"]');
+  const button = event.target.closest(
+    '[data-action="delete-fine"]'
+  );
 
   if (!button || !isAdmin) return;
 
-  const confirmed = window.confirm("¿Quieres eliminar esta multa?");
+  const confirmed = window.confirm(
+    "¿Quieres eliminar esta multa?"
+  );
 
   if (!confirmed) return;
 
   try {
-    await db.collection("multas").doc(button.dataset.id).delete();
+    await db
+      .collection("multas")
+      .doc(button.dataset.id)
+      .delete();
   } catch (error) {
     console.error(error);
+
     alert("No se ha podido eliminar la multa.");
   }
 });

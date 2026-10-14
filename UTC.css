@@ -1673,3 +1673,7 @@ tbody tr:last-child td {
     align-items: stretch;
   }
 }
+
+.hidden {
+  display: none !important;
+}
