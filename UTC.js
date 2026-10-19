@@ -3533,24 +3533,34 @@ document
   });
 
 function loadTrainings() {
+  if (!attendanceContainer) return;
+
+  if (trainingsUnsubscribe) {
+    trainingsUnsubscribe();
+  }
+
   trainingsUnsubscribe = db
     .collection("entrenamientos")
-    .orderBy("fecha", "asc")
+    .orderBy("fecha", "desc")
     .onSnapshot(
       async (snapshot) => {
         const trainings = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data()
+          ...doc.data(),
+          id: doc.id
         }));
 
         await renderTrainings(trainings);
       },
       (error) => {
-        console.error(error);
+        console.error(
+          "Error al cargar entrenamientos:",
+          error
+        );
 
         attendanceContainer.innerHTML = `
           <p class="empty-state">
-            No se pueden cargar los entrenamientos. Revisa las reglas de Firestore.
+            No se pueden cargar los entrenamientos.
+            Revisa las reglas de Firestore.
           </p>
         `;
       }
@@ -3558,52 +3568,66 @@ function loadTrainings() {
 }
 
 async function renderTrainings(trainings) {
+  if (!attendanceContainer) return;
+
+  const openTrainingIds = new Set(
+    [
+      ...attendanceContainer.querySelectorAll(
+        ".training-attendance-details[open]"
+      )
+    ].map((element) => element.dataset.trainingId)
+  );
+
   if (!trainings.length) {
     attendanceContainer.innerHTML = `
       <p class="empty-state">
         No hay entrenamientos registrados.
       </p>
     `;
+
     return;
   }
 
   try {
-    const attendancePromises = trainings.map(async (training) => {
-      const attendanceSnapshot = await db
-        .collection("entrenamientos")
-        .doc(training.id)
-        .collection("asistencias")
-        .get();
-
-      const attendanceMap = {};
-
-      attendanceSnapshot.forEach((doc) => {
-        attendanceMap[doc.id] = doc.data();
-      });
-
-      return {
-        ...training,
-        attendanceMap
-      };
-    });
-
     const trainingsWithAttendance = await Promise.all(
-      attendancePromises
+      trainings.map(async (training) => {
+        const attendanceSnapshot = await db
+          .collection("entrenamientos")
+          .doc(training.id)
+          .collection("asistencias")
+          .get();
+
+        const attendanceMap = {};
+
+        attendanceSnapshot.forEach((doc) => {
+          attendanceMap[doc.id] = doc.data();
+        });
+
+        return {
+          ...training,
+          attendanceMap
+        };
+      })
     );
 
     attendanceContainer.innerHTML = trainingsWithAttendance
       .map((training) => {
-        const allPlayersRegistered =
-          players.length > 0 &&
-          players.every((player) => {
-            return training.attendanceMap[player.id]?.asistio !== undefined;
-          });
+        const trainingId = escapeHTML(training.id);
 
         const rows = players.length
           ? players
               .map((player) => {
-                const attendance = training.attendanceMap[player.id];
-                const attended = attendance?.asistio;
+                const attended =
+                  training.attendanceMap[player.id]?.asistio;
+
+                const playerId = escapeHTML(player.id);
+                const playerName = escapeHTML(
+                  player.nombre || "Jugador"
+                );
+
+                const playerDorsal = escapeHTML(
+                  player.dorsal ?? ""
+                );
 
                 if (!isAdmin) {
                   const readableStatus =
@@ -3616,42 +3640,36 @@ async function renderTrainings(trainings) {
                   return `
                     <div class="attendance-row">
                       <strong>
-                        ${escapeHTML(player.nombre)} · #${escapeHTML(
-                          player.dorsal
-                        )}
+                        ${playerName} · #${playerDorsal}
                       </strong>
 
                       <span>${readableStatus}</span>
-
-                      <span class="attendance-status">
-                        Solo lectura
-                      </span>
                     </div>
                   `;
                 }
 
-                /*
-                  Para el entrenador siempre se generan selectores.
-                  Después de guardar se ocultan mediante la clase
-                  "attendance-locked", salvo que pulse Editar.
-                */
                 return `
                   <div class="attendance-row">
                     <strong>
-                      ${escapeHTML(player.nombre)} · #${escapeHTML(
-                        player.dorsal
-                      )}
+                      ${playerName} · #${playerDorsal}
                     </strong>
 
                     <select
                       class="attendance-select"
-                      data-training-id="${training.id}"
-                      data-player-id="${player.id}"
-                      data-player-name="${escapeHTML(player.nombre)}"
+                      data-training-id="${trainingId}"
+                      data-player-id="${playerId}"
+                      data-player-name="${playerName}"
+                      aria-label="Asistencia de ${playerName}"
+                      disabled
                     >
                       <option
                         value=""
-                        ${attended === undefined ? "selected" : ""}
+                        ${
+                          attended !== true &&
+                          attended !== false
+                            ? "selected"
+                            : ""
+                        }
                       >
                         Sin registrar
                       </option>
@@ -3670,16 +3688,6 @@ async function renderTrainings(trainings) {
                         No
                       </option>
                     </select>
-
-                    <span class="attendance-readonly-status">
-                      ${
-                        attended === true
-                          ? "Sí"
-                          : attended === false
-                          ? "No"
-                          : "Sin registrar"
-                      }
-                    </span>
                   </div>
                 `;
               })
@@ -3692,32 +3700,45 @@ async function renderTrainings(trainings) {
 
         return `
           <article
-            class="training-card ${
-              allPlayersRegistered ? "attendance-locked" : ""
-            }"
-            data-training-id="${training.id}"
+            class="training-card"
+            data-training-id="${trainingId}"
           >
             <div class="training-card-header">
-              <h3>Entrenamiento: ${formatDate(training.fecha)}</h3>
+              <h3>
+                Entrenamiento:
+                ${escapeHTML(formatDate(training.fecha))}
+              </h3>
 
               ${
                 isAdmin
                   ? `
-                    <div class="training-card-actions">
+                    <div class="training-actions">
                       <button
-                        class="small-btn btn-primary edit-attendance-btn"
-                        data-action="edit-attendance"
-                        data-training-id="${training.id}"
+                        type="button"
+                        class="small-btn btn-outline-dark"
+                        data-action="edit-training"
+                        data-training-id="${trainingId}"
                       >
-                        Editar asistencia
+                        EDITAR
                       </button>
 
                       <button
+                        type="button"
+                        class="small-btn btn-primary"
+                        data-action="save-training-attendance"
+                        data-training-id="${trainingId}"
+                        disabled
+                      >
+                        GUARDAR
+                      </button>
+
+                      <button
+                        type="button"
                         class="small-btn btn-danger"
                         data-action="delete-training"
-                        data-training-id="${training.id}"
+                        data-training-id="${trainingId}"
                       >
-                        Eliminar fecha
+                        ELIMINAR
                       </button>
                     </div>
                   `
@@ -3725,35 +3746,43 @@ async function renderTrainings(trainings) {
               }
             </div>
 
-            <div class="attendance-list">
-              ${rows}
-            </div>
+            <details
+              class="training-attendance-details"
+              data-training-id="${trainingId}"
+              ${openTrainingIds.has(training.id) ? "open" : ""}
+            >
+              <summary class="training-attendance-summary">
+                <span>
+                  Jugadores y asistencia (${players.length})
+                </span>
 
-            ${
-              isAdmin
-                ? `
-                  <div class="attendance-batch-actions">
-                    <button
-                      class="btn btn-primary"
-                      data-action="save-attendance-batch"
-                      data-training-id="${training.id}"
-                    >
-                      ${
-                        allPlayersRegistered
-                          ? "Guardar cambios"
-                          : "Guardar asistencia"
-                      }
-                    </button>
-                  </div>
-                `
-                : ""
-            }
+                <span
+                  class="training-attendance-arrow"
+                  aria-hidden="true"
+                >
+                  ▾
+                </span>
+              </summary>
+
+              <div class="attendance-list">
+                ${rows}
+              </div>
+            </details>
+
+            <p
+              class="form-message training-card-message"
+              role="status"
+              aria-live="polite"
+            ></p>
           </article>
         `;
       })
       .join("");
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Error al cargar la asistencia:",
+      error
+    );
 
     attendanceContainer.innerHTML = `
       <p class="empty-state">
@@ -3763,157 +3792,310 @@ async function renderTrainings(trainings) {
   }
 }
 
-attendanceContainer.addEventListener("click", async (event) => {
-  const saveBatchButton = event.target.closest(
-    '[data-action="save-attendance-batch"]'
-  );
+if (attendanceContainer) {
+  attendanceContainer.addEventListener("click", async (event) => {
+    if (!isAdmin || !currentUser) return;
 
-  const editButton = event.target.closest(
-    '[data-action="edit-attendance"]'
-  );
+    const button = event.target.closest("button[data-action]");
 
-  const deleteButton = event.target.closest(
-    '[data-action="delete-training"]'
-  );
+    if (!button || button.disabled) return;
 
-  /*
-    EDITAR ASISTENCIA:
-    hace visibles los selectores y el botón de guardar
-    solo para ese entrenamiento.
-  */
-  if (editButton && isAdmin) {
-    const trainingCard = editButton.closest(".training-card");
+    const trainingCard = button.closest(".training-card");
 
     if (!trainingCard) return;
 
-    trainingCard.classList.remove("attendance-locked");
+    const action = button.dataset.action;
 
-    const saveButton = trainingCard.querySelector(
-      '[data-action="save-attendance-batch"]'
+    const trainingId =
+      button.dataset.trainingId ||
+      trainingCard.dataset.trainingId;
+
+    if (!trainingId) return;
+
+    const editButton = trainingCard.querySelector(
+      '[data-action="edit-attendance"], ' +
+      '[data-action="edit-training"]'
     );
 
-    if (saveButton) {
-      saveButton.textContent = "Guardar cambios";
-    }
+    const saveButton = trainingCard.querySelector(
+      '[data-action="save-attendance-batch"], ' +
+      '[data-action="save-training-attendance"]'
+    );
 
-    return;
-  }
-
-  /*
-    GUARDAR TODA LA ASISTENCIA:
-    comprueba todos los selectores y guarda los registros
-    en una sola operación batch de Firestore.
-  */
-  if (saveBatchButton && isAdmin) {
-    const trainingId = saveBatchButton.dataset.trainingId;
-
-    const trainingCard = saveBatchButton.closest(".training-card");
-
-    if (!trainingCard) return;
+    const deleteButton = trainingCard.querySelector(
+      '[data-action="delete-training"]'
+    );
 
     const selectors = [
       ...trainingCard.querySelectorAll(".attendance-select")
     ];
 
-    if (!selectors.length) {
-      alert("No hay jugadores para registrar.");
-      return;
-    }
+    const details = trainingCard.querySelector("details");
 
-    const missingAttendance = selectors.some(
-      (selector) => selector.value === ""
-    );
+    const setBusy = (busy) => {
+      trainingCard.dataset.busy = busy ? "true" : "false";
+    };
 
-    if (missingAttendance) {
-      alert(
-        "Selecciona Sí o No para todos los jugadores antes de guardar."
-      );
-      return;
-    }
+    if (trainingCard.dataset.busy === "true") return;
 
-    saveBatchButton.disabled = true;
-    saveBatchButton.textContent = "Guardando...";
+    // =================================================
+    // EDITAR LA ASISTENCIA DEL ENTRENAMIENTO
+    // =================================================
+    if (
+      action === "edit-attendance" ||
+      action === "edit-training"
+    ) {
+      if (!selectors.length) {
+        alert("No hay jugadores para registrar.");
+        return;
+      }
 
-    try {
-      const batch = db.batch();
+      trainingCard.classList.remove("attendance-locked");
 
       selectors.forEach((selector) => {
-        const playerId = selector.dataset.playerId;
-        const playerName = selector.dataset.playerName;
-
-        const attendanceRef = db
-          .collection("entrenamientos")
-          .doc(trainingId)
-          .collection("asistencias")
-          .doc(playerId);
-
-        batch.set(
-          attendanceRef,
-          {
-            jugadorId: playerId,
-            jugadorNombre: playerName,
-            asistio: selector.value === "si",
-            actualizadoPor: currentUser.uid,
-            actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
-          },
-          { merge: true }
-        );
+        selector.disabled = false;
       });
 
-      await batch.commit();
+      if (details) {
+        details.open = true;
+      }
 
-      trainingCard.classList.add("attendance-locked");
+      if (editButton) {
+        editButton.textContent = "EDITAR";
+        editButton.disabled = true;
+      }
 
-      saveBatchButton.textContent = "Guardado";
+      if (saveButton) {
+        saveButton.textContent = "GUARDAR";
+        saveButton.disabled = false;
+      }
 
-      window.setTimeout(() => {
-        saveBatchButton.textContent = "Guardar cambios";
-      }, 1500);
-    } catch (error) {
-      console.error(error);
-
-      saveBatchButton.disabled = false;
-      saveBatchButton.textContent = "Guardar cambios";
-
-      alert("No se ha podido guardar la asistencia.");
+      return;
     }
 
-    return;
-  }
+    // =================================================
+    // GUARDAR TODA LA ASISTENCIA DEL ENTRENAMIENTO
+    // =================================================
+    if (
+      action === "save-attendance-batch" ||
+      action === "save-training-attendance"
+    ) {
+      if (!selectors.length) {
+        alert("No hay jugadores para registrar.");
+        return;
+      }
 
-  /*
-    ELIMINAR ENTRENAMIENTO Y SUS ASISTENCIAS.
-  */
-  if (deleteButton && isAdmin) {
-    const trainingId = deleteButton.dataset.trainingId;
-
-    const confirmed = window.confirm(
-      "¿Quieres eliminar este entrenamiento y sus asistencias?"
-    );
-
-    if (!confirmed) return;
-
-    try {
-      const attendanceSnapshot = await db
-        .collection("entrenamientos")
-        .doc(trainingId)
-        .collection("asistencias")
-        .get();
-
-      const batch = db.batch();
-
-      attendanceSnapshot.forEach((document) => {
-        batch.delete(document.ref);
-      });
-
-      batch.delete(
-        db.collection("entrenamientos").doc(trainingId)
+      const missingAttendance = selectors.find(
+        (selector) =>
+          !["si", "no"].includes(selector.value)
       );
 
-      await batch.commit();
-    } catch (error) {
-      console.error(error);
-      alert("No se ha podido eliminar el entrenamiento.");
+      if (missingAttendance) {
+        if (details) {
+          details.open = true;
+        }
+
+        alert(
+          "Selecciona Sí o No para todos los jugadores antes de guardar."
+        );
+
+        missingAttendance.focus();
+        return;
+      }
+
+      const missingPlayerId = selectors.some(
+        (selector) => !selector.dataset.playerId
+      );
+
+      if (missingPlayerId) {
+        alert(
+          "Falta el identificador de algún jugador. Revisa los atributos data-player-id de los selectores."
+        );
+
+        return;
+      }
+
+      const attendanceData = selectors.map((selector) => ({
+        playerId: selector.dataset.playerId,
+        playerName: selector.dataset.playerName || "",
+        asistio: selector.value === "si"
+      }));
+
+      setBusy(true);
+
+      selectors.forEach((selector) => {
+        selector.disabled = true;
+      });
+
+      if (editButton) {
+        editButton.disabled = true;
+      }
+
+      if (saveButton) {
+        saveButton.disabled = true;
+        saveButton.textContent = "GUARDANDO...";
+      }
+
+      if (deleteButton) {
+        deleteButton.disabled = true;
+      }
+
+      try {
+        const batch = db.batch();
+
+        attendanceData.forEach((attendance) => {
+          const attendanceRef = db
+            .collection("entrenamientos")
+            .doc(trainingId)
+            .collection("asistencias")
+            .doc(attendance.playerId);
+
+          batch.set(
+            attendanceRef,
+            {
+              jugadorId: attendance.playerId,
+              jugadorNombre: attendance.playerName,
+              asistio: attendance.asistio,
+              actualizadoPor: currentUser.uid,
+              actualizadoEn:
+                firebase.firestore.FieldValue.serverTimestamp()
+            },
+            { merge: true }
+          );
+        });
+
+        await batch.commit();
+
+        trainingCard.classList.add("attendance-locked");
+
+        if (editButton) {
+          editButton.disabled = false;
+        }
+
+        if (saveButton) {
+          saveButton.disabled = true;
+          saveButton.textContent = "GUARDAR";
+        }
+
+        alert("Asistencia guardada correctamente.");
+      } catch (error) {
+        console.error(
+          "Error al guardar la asistencia:",
+          error
+        );
+
+        trainingCard.classList.remove("attendance-locked");
+
+        selectors.forEach((selector) => {
+          selector.disabled = false;
+        });
+
+        if (editButton) {
+          editButton.disabled = true;
+        }
+
+        if (saveButton) {
+          saveButton.disabled = false;
+          saveButton.textContent = "GUARDAR";
+        }
+
+        alert(
+          "No se ha podido guardar la asistencia. Puedes volver a intentarlo."
+        );
+      } finally {
+        setBusy(false);
+
+        if (deleteButton) {
+          deleteButton.disabled = false;
+        }
+      }
+
+      return;
     }
-  }
-});
+
+     // =================================================
+    // ELIMINAR ENTRENAMIENTO Y SUS ASISTENCIAS
+    // =================================================
+    if (action === "delete-training") {
+      const confirmed = window.confirm(
+        "¿Quieres eliminar este entrenamiento y todas sus asistencias? Esta acción no se puede deshacer."
+      );
+
+      if (!confirmed) return;
+
+      const wasEditing = selectors.some(
+        (selector) => !selector.disabled
+      );
+
+      setBusy(true);
+
+      selectors.forEach((selector) => {
+        selector.disabled = true;
+      });
+
+      if (editButton) {
+        editButton.disabled = true;
+      }
+
+      if (saveButton) {
+        saveButton.disabled = true;
+      }
+
+      if (deleteButton) {
+        deleteButton.disabled = true;
+        deleteButton.textContent = "ELIMINANDO...";
+      }
+
+      try {
+        const trainingRef = db
+          .collection("entrenamientos")
+          .doc(trainingId);
+
+        const attendanceSnapshot = await trainingRef
+          .collection("asistencias")
+          .get();
+
+        const batch = db.batch();
+
+        attendanceSnapshot.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+
+        batch.delete(trainingRef);
+
+        await batch.commit();
+
+        trainingCard.remove();
+      } catch (error) {
+        console.error(
+          "Error al eliminar el entrenamiento:",
+          error
+        );
+
+        selectors.forEach((selector) => {
+          selector.disabled = !wasEditing;
+        });
+
+        if (editButton) {
+          editButton.disabled = wasEditing;
+        }
+
+        if (saveButton) {
+          saveButton.disabled =
+            !wasEditing || !selectors.length;
+        }
+
+        alert(
+          "No se ha podido eliminar el entrenamiento."
+        );
+      } finally {
+        setBusy(false);
+
+        if (deleteButton) {
+          deleteButton.disabled = false;
+          deleteButton.textContent = "ELIMINAR";
+        }
+      }
+    }
+  });
+}

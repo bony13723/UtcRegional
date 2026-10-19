@@ -1677,3 +1677,60 @@ tbody tr:last-child td {
 .hidden {
   display: none !important;
 }
+
+/* =====================================================
+   DESPLEGABLE DE ASISTENCIA DE ENTRENAMIENTOS
+   ===================================================== */
+
+.training-attendance-details {
+  margin-top: 0.75rem;
+  overflow: hidden;
+  border: 1px solid #dbe3f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.training-attendance-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: #f8fafc;
+  color: #1f4b87;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.training-attendance-summary::-webkit-details-marker {
+  display: none;
+}
+
+.training-attendance-summary:hover {
+  background: #eef3fa;
+}
+
+.training-attendance-summary:focus-visible {
+  outline: 2px solid #1f4b87;
+  outline-offset: -2px;
+}
+
+.training-attendance-arrow {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.training-attendance-details[open]
+  > .training-attendance-summary {
+  border-bottom: 1px solid #dbe3f0;
+}
+
+.training-attendance-details[open]
+  .training-attendance-arrow {
+  transform: rotate(180deg);
+}
+
+.training-attendance-details > .attendance-list {
+  padding: 0.75rem;
+}
