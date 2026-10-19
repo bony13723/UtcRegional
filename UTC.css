@@ -1734,3 +1734,19 @@ tbody tr:last-child td {
 .training-attendance-details > .attendance-list {
   padding: 0.75rem;
 }
+
+/* Mantener visibles los botones generales del entrenamiento */
+.training-card [data-action="edit-attendance"],
+.training-card [data-action="edit-training"],
+.training-card [data-action="save-attendance-batch"],
+.training-card [data-action="save-training-attendance"],
+.training-card [data-action="delete-training"] {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.training-card button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
